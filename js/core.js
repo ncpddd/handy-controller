@@ -331,6 +331,8 @@ function initCtrlCanvas(){
   function ctrlRenderLoop(){
     if(!document.getElementById('control-mode').classList.contains('active'))return;
     ctx.clearRect(0,0,ctrlCW,ctrlCH);
+    // En mode TARGET, le canvas sert à spawner des cibles : pas de trail
+    if(gameMode){requestAnimationFrame(ctrlRenderLoop);return;}
     // Dessiner le trail (même code que renderCanvas)
     if(trail.length>1){
       for(var k=1;k<trail.length;k++){
@@ -447,6 +449,11 @@ function resetAllGames(){
   document.getElementById('wheelArea').classList.remove('show');
   document.getElementById('wheelResult').classList.remove('show');
   document.getElementById('wheelSetup').classList.remove('active');
+
+  // Shell Game
+  shellActive=false;shellRoundActive=false;shellGuessable=false;
+  document.getElementById('shellOverlay').classList.remove('active');
+  document.getElementById('shellHud').classList.remove('show');
 }
 
 /* ── PEER DATA MESSAGES ── */
@@ -481,8 +488,9 @@ function handlePeerData(data){
       ghCombo++; ghMiss=ghMiss||0; ghUpdateHud();
       ghCtrlApplyVelocity(msg.speed, false, msg.noteSpeed);
     } else if(msg.type==='gh_miss'){
-      // Côté contrôleur : passif a raté → accélérer HAMP
+      // Côté contrôleur : passif a raté → accélérer HAMP + réduire le délai entre notes
       ghCombo=0; ghMiss++; ghUpdateHud();
+      ghColCooldown=Math.max(GH_COL_COOLDOWN_MIN,ghColCooldown-GH_COL_COOLDOWN_DECAY);
       ghCtrlApplyVelocity(msg.speed, !ghStarted, msg.noteSpeed);
     } else if(msg.type==='wheel_init'){
       // Côté passif : le contrôleur a configuré la roue
@@ -496,6 +504,19 @@ function handlePeerData(data){
       document.getElementById('wheelOverlay').classList.remove('active');
       document.getElementById('wheelArea').classList.remove('show');
       document.getElementById('wheelResult').classList.remove('show');
+    } else if(msg.type==='shell_init'){
+      // Côté passif : le contrôleur a lancé le Shell Game
+      shellPassiveStart();
+    } else if(msg.type==='shell_round'){
+      // Côté passif : rejouer la manche (mélange) du contrôleur
+      if(shellActive&&!shellIsCtrl) shellRunRound(msg.startBallCup,msg.seq,msg.swapDur);
+    } else if(msg.type==='shell_guess'){
+      // Côté contrôleur : le passif a deviné → appliquer l'effet sur le Handy
+      shellApplyResult(msg.cupId,msg.correct);
+    } else if(msg.type==='shell_stop'){
+      // Côté passif : le contrôleur a arrêté le Shell Game
+      shellActive=false;shellRoundActive=false;shellGuessable=false;
+      document.getElementById('shellOverlay').classList.remove('active');
     }
   }catch(e){console.error('handlePeerData error:',e,data);}
 }

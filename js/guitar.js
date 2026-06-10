@@ -9,6 +9,9 @@ var GH_HIT_WINDOW       = 120;   // ms fenêtre de tolérance (±)
 var GH_SPEED_HIT        = -0.025;// -2.5% vitesse Handy par réussite
 var GH_SPEED_MISS       = 0.025; // +2.5% vitesse Handy par raté
 var GH_HIT_ZONE_Y_PCT   = 0.82;  // position zone de frappe (% hauteur écran)
+var GH_COL_COOLDOWN_START = 1000; // délai mini de départ entre deux notes sur la même colonne
+var GH_COL_COOLDOWN_DECAY = 100;  // réduction du délai à chaque raté
+var GH_COL_COOLDOWN_MIN   = 100;  // délai mini plancher
 
 /* ── State ── */
 var ghActive      = false;
@@ -23,6 +26,8 @@ var ghNoteIdCtr   = 0;
 var ghRafId       = null;
 var ghLastFrame   = null;
 var ghHampRunning = false;
+var ghLastSentAt  = [0,0,0,0]; // dernier envoi par colonne (performance.now())
+var ghColCooldown = GH_COL_COOLDOWN_START; // délai courant, réduit à chaque raté
 
 /* ── Démarrage côté contrôleur ── */
 async function startGuitarMode(){
@@ -34,6 +39,7 @@ async function startGuitarMode(){
   ghSpeed=0.0; ghCombo=0; ghMiss=0;
   ghNoteSpeed=GH_NOTE_SPEED_MIN;
   ghNotes=[]; ghHampRunning=false; ghStarted=false;
+  ghLastSentAt=[0,0,0,0]; ghColCooldown=GH_COL_COOLDOWN_START;
 
   // Overlay visible pour les deux
   document.getElementById('ghOverlay').classList.add('active');
@@ -109,6 +115,9 @@ async function stopGuitarMode(){
 /* ── Contrôleur envoie une note ── */
 function ghCtrlSend(col){
   if(!ghActive||!ghIsCtrl)return;
+  var now=performance.now();
+  if(now-ghLastSentAt[col]<ghColCooldown)return;
+  ghLastSentAt[col]=now;
   var id=ghNoteIdCtr++;
   var msg={type:'gh_note',id:id,col:col};
   // Spawn local (pour que le ctrl voie aussi la note)

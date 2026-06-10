@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/target.css"/>
   <link rel="stylesheet" href="css/guitar.css"/>
   <link rel="stylesheet" href="css/wheel.css"/>
+  <link rel="stylesheet" href="css/shell.css"/>
 </head>
 <body>
 
@@ -97,6 +98,11 @@
         <div class="mc-icon">🎡</div>
         <div class="mc-title">WHEEL</div>
         <div class="mc-desc">Configure a wheel of effects, then spin it together</div>
+      </div>
+      <div class="mode-card" onclick="startShellMode()">
+        <div class="mc-icon">🐚</div>
+        <div class="mc-title">SHELL GAME</div>
+        <div class="mc-desc">3 cups, find the ball — wrong guess speeds up the Handy</div>
       </div>
     </div>
   </div>
@@ -193,9 +199,38 @@
     <button id="wheelSpinBtn" onclick="wheelSpin()">🎡 SPIN</button>
   </div>
 
+  <!-- ── SHELL GAME OVERLAY (body level, visible camera + control) ── -->
+  <div id="shellOverlay">
+    <div id="shellHud">
+      <div id="shellHudBar">
+        <span id="shellSpeedLabel">Speed: pause</span>
+        <button class="btn-game-stop" onclick="stopShellMode()">■ Stop</button>
+      </div>
+      <div id="shellConfig">
+        <div class="shell-config-item">
+          <span>Swaps</span>
+          <button onclick="shellAdjustSwapCount(-1)">-</button>
+          <span id="shellSwapCountVal">8</span>
+          <button onclick="shellAdjustSwapCount(1)">+</button>
+        </div>
+        <div class="shell-config-item">
+          <span>Vitesse</span>
+          <button onclick="shellAdjustSwapSpeed(-1)">-</button>
+          <span id="shellSwapSpeedVal">3</span>
+          <button onclick="shellAdjustSwapSpeed(1)">+</button>
+        </div>
+        <button id="shellPlayBtn" onclick="shellPlayRound()">▶ Jouer</button>
+      </div>
+    </div>
+    <div id="shellArea"></div>
+    <div id="shellResult"></div>
+    <div id="shellHint"></div>
+  </div>
+
 <script src="js/core.js"></script>
 <script src="js/target.js"></script>
 <script src="js/guitar.js"></script>
 <script src="js/wheel.js"></script>
+<script src="js/shell.js"></script>
 </body>
 </html>
