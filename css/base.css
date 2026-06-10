@@ -1,0 +1,148 @@
+:root {
+  --bg:#0c0c0f;--surface:#141418;--surface2:#1c1c22;
+  --border:rgba(255,255,255,0.07);--border-h:rgba(255,255,255,0.14);
+  --text:#f0eff4;--muted:#6e6d7a;--dim:#3a3940;
+  --accent:#c8ff00;--accent-d:rgba(200,255,0,0.12);
+  --danger:#ff4d4d;--danger-d:rgba(255,77,77,0.12);
+  --warn:#ffaa00;--warn-d:rgba(255,170,0,0.12);
+  --r:12px;--rs:8px;
+  --ff:'Syne',sans-serif;--fm:'DM Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--ff);-webkit-font-smoothing:antialiased}
+
+/* ── CAMERA MODE ── */
+#camera-mode{display:none;position:fixed;inset:0;background:#000;z-index:10}
+#camera-mode.active{display:flex;align-items:center;justify-content:center}
+#camVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#camOverlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(0,0,0,0.6);z-index:2}
+#camRoomCode{font-family:var(--fm);font-size:36px;font-weight:800;letter-spacing:.12em;color:var(--accent);text-shadow:0 0 20px rgba(200,255,0,0.4)}
+#camStatus{font-family:var(--fm);font-size:13px;color:var(--muted)}
+#camLinkGen{display:flex;flex-direction:column;align-items:center;gap:10px;z-index:5}
+#camLinkForm{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:280px}
+#camLinkForm.active{display:flex}
+#camLinkForm input[type=text]{
+  width:100%;height:40px;padding:0 12px;border-radius:var(--rs);
+  border:1px solid var(--border);background:var(--surface2);
+  color:var(--text);font-family:var(--fm);font-size:13px;outline:none;
+}
+#camLinkForm input[type=text]:focus{border-color:var(--border-h)}
+#camLinkOut{
+  display:none;width:100%;word-break:break-all;font-family:var(--fm);font-size:11px;
+  color:var(--muted);background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--rs);padding:8px 10px;
+}
+#camLinkOut.show{display:block}
+#camConnected{position:absolute;inset:0;z-index:3;pointer-events:none}
+#camConnectedDot{position:absolute;top:16px;right:16px;width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1.8s ease-in-out infinite;display:none}
+#camConnectedDot.show{display:block}
+#camLabel{position:absolute;top:16px;left:16px;font-family:var(--fm);font-size:11px;color:rgba(255,255,255,0.5);display:none}
+#camLabel.show{display:block}
+
+/* ── CONTROL MODE ── */
+#control-mode{display:none;position:fixed;inset:0;z-index:10;touch-action:none}
+#control-mode.active{display:block}
+#ctrlVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0c0c0f}
+#ctrlCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none}
+/* Position indicator */
+#posIndicator{
+  position:absolute;left:0;right:0;display:flex;align-items:center;gap:10px;
+  pointer-events:none;z-index:4;transition:top .05s linear;
+}
+#posLine{flex:1;height:2px;background:rgba(200,255,0,0.5)}
+#posValue{font-family:var(--fm);font-size:13px;font-weight:600;color:var(--accent);
+  background:rgba(12,12,15,0.7);padding:3px 8px;border-radius:6px;white-space:nowrap;margin-right:12px}
+/* Top bar overlay */
+#ctrlTopBar{
+  position:absolute;top:0;left:0;right:0;z-index:5;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:linear-gradient(to bottom,rgba(0,0,0,0.7),transparent);
+  pointer-events:none;
+}
+#ctrlTopBar button{pointer-events:all}
+.ctrl-pill{font-family:var(--fm);font-size:11px;padding:4px 10px;border-radius:20px;
+  background:rgba(12,12,15,0.7);border:1px solid rgba(255,255,255,0.12);color:var(--muted)}
+.ctrl-pill.on{color:var(--accent);border-color:rgba(200,255,0,0.3)}
+/* Bottom bar overlay */
+#ctrlBottomBar{
+  position:absolute;bottom:0;left:0;right:0;z-index:5;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px;background:linear-gradient(to top,rgba(0,0,0,0.7),transparent);
+  gap:8px;
+}
+#ctrlPosDisplay{font-family:var(--fm);font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.02em}
+#ctrlPosDisplay span{font-size:14px;color:var(--muted);margin-left:2px}
+#ctrlWaiting{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center;flex:1}
+/* Connecting overlay */
+#ctrlConnecting{
+  position:absolute;inset:0;z-index:6;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  padding:2rem;
+}
+#ctrlConnecting h2{font-size:22px;font-weight:800}
+#ctrlConnecting p{font-family:var(--fm);font-size:13px;color:var(--muted);text-align:center;line-height:1.6}
+#ctrlConnecting .room-display{font-family:var(--fm);font-size:20px;color:var(--accent);letter-spacing:.1em;
+  background:var(--accent-d);border:1px solid rgba(200,255,0,.2);padding:10px 20px;border-radius:var(--rs)}
+
+/* Cursor dot on canvas */
+#cursorDot{
+  position:absolute;width:40px;height:40px;border-radius:50%;
+  background:rgba(200,255,0,0.15);border:2px solid rgba(200,255,0,0.6);
+  pointer-events:none;transform:translate(-50%,-50%);
+  display:none;transition:top .05s,left .05s;z-index:4;
+}
+#cursorDot::after{
+  content:'';position:absolute;inset:8px;border-radius:50%;
+  background:rgba(200,255,0,0.8);
+}
+
+/* ── BASE ── */
+body{min-height:100vh}
+.brand-dot{width:28px;height:28px;border-radius:50%;background:var(--accent)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.btn{height:44px;padding:0 18px;border:none;border-radius:var(--rs);font-family:var(--ff);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.97)}
+.btn-a{background:var(--accent);color:#0c0c0f}.btn-a:hover{opacity:.88}.btn-a:disabled{opacity:.35;cursor:not-allowed}
+.btn-g{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;height:36px;padding:0 14px}.btn-g:hover{border-color:var(--border-h);color:var(--text)}
+.btn-d{background:var(--danger-d);border:1px solid rgba(255,77,77,.25);color:var(--danger);height:36px;padding:0 14px;font-size:13px}
+
+/* ── GAME MODE SELECT ── */
+#gameModeSelect{
+  position:absolute;inset:0;z-index:7;background:rgba(12,12,15,0.92);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:2rem;
+}
+#gameModeSelect.active{display:flex;}
+#gameModeSelect h2{font-size:24px;font-weight:800;letter-spacing:-.03em}
+#gameModeSelect p{font-family:var(--fm);font-size:13px;color:var(--muted);text-align:center}
+
+/* Marquee title */
+.casino-marquee{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.marquee-lights{
+  width:100%;height:10px;
+  background-image:radial-gradient(circle,#ffe9a8 0 3.5px,transparent 4px);
+  background-size:24px 10px;background-repeat:repeat-x;background-position:center;
+  filter:drop-shadow(0 0 4px rgba(255,230,140,.8));
+  animation:marqueeBlink 1.2s steps(2) infinite;
+}
+.marquee-lights:last-child{animation-delay:.6s}
+@keyframes marqueeBlink{50%{opacity:.35}}
+.casino-title{
+  width:100%;text-align:center;padding:14px 24px;border-radius:999px;
+  border:3px solid var(--danger);
+  background:rgba(255,77,77,.08);
+  font-family:var(--ff);font-weight:800;font-size:clamp(22px,7vw,34px);
+  letter-spacing:.18em;color:#fff;text-transform:uppercase;
+  text-shadow:0 0 16px rgba(255,77,77,.8);
+  box-shadow:0 0 24px rgba(255,77,77,.35),inset 0 0 18px rgba(255,77,77,.15);
+}
+.mode-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;width:100%;max-width:500px}
+.mode-card{
+  flex:1;min-width:140px;max-width:200px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px 16px;cursor:pointer;text-align:center;
+  transition:border-color .15s,transform .1s;
+}
+.mode-card:hover{border-color:var(--accent);transform:scale(1.02)}
+.mode-card .mc-icon{font-size:32px;margin-bottom:10px}
+.mode-card .mc-title{font-size:15px;font-weight:800;margin-bottom:6px}
+.mode-card .mc-desc{font-family:var(--fm);font-size:11px;color:var(--muted);line-height:1.5}

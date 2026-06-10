@@ -1,0 +1,108 @@
+/* ══════════════════════════════════════════
+   WHEEL MODE (Roue de la fortune)
+══════════════════════════════════════════ */
+
+/* Setup screen (contrôleur uniquement) */
+#wheelSetup{
+  position:fixed;inset:0;z-index:25;background:rgba(12,12,15,0.96);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:2rem;
+}
+#wheelSetup.active{display:flex;}
+#wheelSetup h2{font-size:22px;font-weight:800;text-align:center}
+#wheelSetup p{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center}
+#wheelSetupGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:360px}
+.wheel-type-btn{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);
+  border-top:3px solid var(--seg-color);
+  padding:12px 6px;text-align:center;cursor:pointer;
+  transition:transform .1s,border-color .15s;-webkit-tap-highlight-color:transparent;
+}
+.wheel-type-btn:active{transform:scale(.95)}
+.wheel-type-btn.disabled{opacity:.3;pointer-events:none}
+.wt-icon{font-size:20px;margin-bottom:4px}
+.wt-label{font-family:var(--fm);font-size:10px;color:var(--muted)}
+#wheelSetupSlots{
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
+  width:100%;max-width:360px;min-height:34px;
+}
+.wheel-slot-chip{
+  font-family:var(--fm);font-size:11px;padding:5px 10px;border-radius:14px;
+  background:var(--surface2);border:1px solid var(--seg-color);color:var(--text);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+#wheelSetupCount{font-family:var(--fm);font-size:13px;color:var(--accent)}
+#wheelSetupActions{display:flex;gap:8px}
+
+/* Overlay jeu (contrôleur + passif) */
+#wheelOverlay{
+  position:fixed;inset:0;z-index:20;display:none;
+  flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:all;background:transparent;
+}
+#wheelOverlay.active{display:flex;}
+
+#wheelArea{
+  position:relative;width:78vw;max-width:340px;aspect-ratio:1/1;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transform:scale(.85);
+  transition:opacity .25s,transform .25s;
+  pointer-events:none;
+}
+#wheelArea.show{opacity:1;transform:scale(1)}
+
+#wheelDiscMask{
+  width:100%;height:100%;border-radius:50%;overflow:hidden;
+  position:relative;
+  border:4px solid rgba(255,255,255,0.15);
+  box-shadow:0 0 40px rgba(0,0,0,0.5);
+}
+#wheelDisc{
+  position:absolute;inset:-2px;border-radius:50%;
+  transform:rotate(0deg);
+}
+.wheel-seg-label{
+  position:absolute;
+  font-size:10px;font-weight:800;color:#0c0c0f;
+  text-align:center;line-height:1.15;white-space:nowrap;
+  pointer-events:none;
+}
+#wheelPointer{
+  position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  width:0;height:0;z-index:2;
+  border-left:14px solid transparent;
+  border-right:14px solid transparent;
+  border-top:22px solid var(--accent);
+  filter:drop-shadow(0 0 6px rgba(200,255,0,0.6));
+}
+
+#wheelResult{
+  margin-top:24px;font-family:var(--ff);font-weight:800;font-size:22px;
+  text-align:center;color:var(--accent);opacity:0;transition:opacity .3s;
+  text-shadow:0 0 20px rgba(200,255,0,0.5);
+}
+#wheelResult.show{opacity:1}
+
+/* HUD (contrôleur uniquement) */
+#wheelHud{
+  position:absolute;top:0;left:0;right:0;z-index:22;
+  display:none;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.8),transparent);
+  pointer-events:none;
+}
+#wheelHud.show{display:flex}
+#wheelHud span{font-family:var(--fm);font-size:12px;color:var(--accent)}
+#wheelHud button{pointer-events:all}
+
+#wheelSpinBtn{
+  position:absolute;bottom:36px;left:50%;transform:translateX(-50%);
+  pointer-events:all;display:none;
+  background:var(--accent);color:#0c0c0f;border:none;
+  font-family:var(--ff);font-weight:800;font-size:16px;
+  padding:14px 36px;border-radius:30px;cursor:pointer;
+  box-shadow:0 4px 24px rgba(200,255,0,0.35);
+  -webkit-tap-highlight-color:transparent;
+}
+#wheelSpinBtn.show{display:block}
+#wheelSpinBtn:disabled{opacity:.4;cursor:not-allowed}

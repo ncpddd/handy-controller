@@ -1,0 +1,131 @@
+/* ══════════════════════════════════════════
+   GUITAR HERO MODE
+══════════════════════════════════════════ */
+#ghOverlay{
+  position:fixed;inset:0;z-index:20;display:none;
+  flex-direction:column;pointer-events:all;
+  background:transparent;
+}
+#ghOverlay.active{display:flex;}
+
+/* Piste principale */
+#ghTrack{
+  position:absolute;inset:0;
+  display:flex;gap:0;
+}
+.gh-col{
+  flex:1;position:relative;
+  border-right:1px solid rgba(255,255,255,0.06);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .08s;
+}
+.gh-col:last-child{border-right:none;}
+.gh-col.gh-flash{background:rgba(255,255,255,0.12)!important;}
+
+/* Couleurs des 4 colonnes */
+.gh-col:nth-child(1){--col-color:#ff4d4d;}
+.gh-col:nth-child(2){--col-color:#ffaa00;}
+.gh-col:nth-child(3){--col-color:#4dff91;}
+.gh-col:nth-child(4){--col-color:#4db8ff;}
+
+/* Zone de frappe en bas */
+.gh-hit-zone{
+  position:absolute;bottom:80px;left:0;right:0;height:56px;
+  border-top:2px solid var(--col-color);
+  background:linear-gradient(to top, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100%);
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+.gh-hit-circle{
+  width:44px;height:44px;border-radius:50%;
+  border:3px solid var(--col-color);
+  background:rgba(0,0,0,0.5);
+  box-shadow:0 0 12px var(--col-color);
+  transition:transform .08s, background .08s;
+}
+.gh-col.gh-flash .gh-hit-circle{
+  background:var(--col-color);
+  transform:scale(1.15);
+}
+
+/* Notes qui tombent */
+.gh-note{
+  position:absolute;
+  left:50%;transform:translateX(-50%);
+  width:44px;height:24px;border-radius:8px;
+  background:var(--col-color);
+  box-shadow:0 0 14px var(--col-color);
+  pointer-events:none;
+  will-change:top;
+}
+
+/* Ligne de frappe visible côté passif */
+#ghHitLine{
+  position:absolute;
+  left:0;right:0;
+  height:2px;
+  background:rgba(255,255,255,0.5);
+  pointer-events:none;
+  z-index:21;
+  top:82%;
+}
+
+/* Labels colonnes (icônes) en haut */
+.gh-col-label{
+  position:absolute;top:16px;left:0;right:0;
+  text-align:center;font-size:20px;pointer-events:none;
+  opacity:0.5;
+}
+
+/* HUD Guitar Hero */
+#ghHud{
+  position:absolute;top:0;left:0;right:0;z-index:22;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.8),transparent);
+  pointer-events:none;
+}
+#ghHud .gh-stat{font-family:var(--fm);font-size:12px;}
+#ghSpeed{color:var(--accent);}
+#ghCombo{color:#4dff91;}
+#ghMiss{color:var(--danger);}
+#ghHud button{pointer-events:all;}
+
+/* Feedback hit/miss */
+.gh-feedback{
+  position:absolute;bottom:145px;left:0;right:0;
+  text-align:center;font-family:var(--fm);font-size:13px;font-weight:600;
+  pointer-events:none;opacity:0;transition:opacity .15s;
+  z-index:23;
+}
+.gh-feedback.show{opacity:1;}
+.gh-feedback.hit{color:#4dff91;}
+.gh-feedback.miss{color:var(--danger);}
+
+/* Contrôleur Guitar : 4 boutons en bas */
+#ghCtrlPad{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;height:72px;z-index:22;
+}
+.gh-ctrl-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  font-size:22px;cursor:pointer;border:none;
+  background:rgba(0,0,0,0.6);
+  border-top:3px solid var(--col-color);
+  -webkit-tap-highlight-color:transparent;
+  active:opacity:0.7;
+  transition:background .08s;
+  user-select:none;
+}
+.gh-ctrl-btn:nth-child(1){--col-color:#ff4d4d;}
+.gh-ctrl-btn:nth-child(2){--col-color:#ffaa00;}
+.gh-ctrl-btn:nth-child(3){--col-color:#4dff91;}
+.gh-ctrl-btn:nth-child(4){--col-color:#4db8ff;}
+.gh-ctrl-btn:active{background:rgba(255,255,255,0.15);}
+
+/* Passif : label colonne en bas */
+.gh-col-tap-hint{
+  position:absolute;bottom:18px;left:0;right:0;
+  text-align:center;font-family:var(--fm);font-size:11px;
+  color:rgba(255,255,255,0.3);pointer-events:none;
+}

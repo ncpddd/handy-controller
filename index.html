@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Handy.ctrl</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="css/base.css"/>
+  <link rel="stylesheet" href="css/target.css"/>
+  <link rel="stylesheet" href="css/guitar.css"/>
+  <link rel="stylesheet" href="css/wheel.css"/>
+</head>
+<body>
+
+<!-- ── CAMERA MODE (input=camera) ── -->
+<div id="camera-mode">
+    <!-- Passive overlay : targets to click -->
+  <div id="passiveGameOverlay"></div>
+  <video id="camVideo" autoplay playsinline muted></video>
+  <!-- Shown while waiting for controller -->
+  <div id="camOverlay">
+    <div style="font-family:var(--fm);font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">Share this code with your partner</div>
+    <div id="camRoomCode">···</div>
+    <div id="camStatus">Waiting for controller...</div>
+    <div id="camLinkGen">
+      <button class="btn btn-g" onclick="camToggleLinkForm()">Generate control link</button>
+      <div id="camLinkForm">
+        <input type="text" id="camCkInput" placeholder="Connection Key (link-...)"/>
+        <input type="text" id="camAkInput" placeholder="Application Key (optional)"/>
+        <button class="btn btn-a" id="camLinkBtn" onclick="camGenerateLink()">Copy link</button>
+        <div id="camLinkOut"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Shown when controller connects -->
+  <div id="camConnected">
+    <div id="camConnectedDot"></div>
+    <div id="camLabel">● LIVE</div>
+  </div>
+</div>
+
+<!-- ── CONTROL MODE (input=control) ── -->
+<div id="control-mode">
+  <!-- Background: partner's camera feed -->
+  <video id="ctrlVideo" autoplay playsinline muted></video>
+  <!-- Canvas for touch input -->
+  <canvas id="ctrlCanvas"></canvas>
+  <!-- Cursor dot -->
+  <div id="cursorDot"></div>
+  <!-- Horizontal position line -->
+  <div id="posIndicator">
+    <div id="posLine"></div>
+    <div id="posValue">50%</div>
+  </div>
+  <!-- Top bar -->
+  <div id="ctrlTopBar">
+    <div style="display:flex;gap:8px">
+      <span class="ctrl-pill" id="ctrlModePill">HAMP</span>
+      <span class="ctrl-pill" id="ctrlRoomPill"></span>
+    </div>
+    <button class="btn btn-d" style="height:32px;font-size:12px" onclick="exitControlMode()">✕ Exit</button>
+  </div>
+  <!-- Bottom bar -->
+  <div id="ctrlBottomBar">
+    <div id="ctrlPosDisplay">—<span>%</span></div>
+    <div id="ctrlWaiting">Touch anywhere to control</div>
+    <button class="btn btn-d" style="height:36px;font-size:12px;pointer-events:all" onclick="stopHandy()">■ Stop</button>
+  </div>
+  <!-- Mode selector (shown after connection) -->
+  <div id="gameModeSelect">
+    <div class="casino-marquee">
+      <div class="marquee-lights"></div>
+      <div class="casino-title">Cock Casino</div>
+      <div class="marquee-lights"></div>
+    </div>
+    <h2>Choose a mode</h2>
+    <p>Select how you want to play</p>
+    <div class="mode-cards">
+      <div class="mode-card" onclick="startBasicMode()">
+        <div class="mc-icon">🎮</div>
+        <div class="mc-title">BASIC</div>
+        <div class="mc-desc">Direct control — slide your thumb to control position</div>
+      </div>
+      <div class="mode-card" onclick="startGameMode()">
+        <div class="mc-icon">🎯</div>
+        <div class="mc-title">TARGET</div>
+        <div class="mc-desc">Tap targets on screen — miss one and the speed increases</div>
+      </div>
+      <div class="mode-card" onclick="startGuitarMode()">
+        <div class="mc-icon">🎸</div>
+        <div class="mc-title">GUITAR</div>
+        <div class="mc-desc">Controller sends notes — hit the right column in time</div>
+      </div>
+      <div class="mode-card" onclick="startWheelMode()">
+        <div class="mc-icon">🎡</div>
+        <div class="mc-title">WHEEL</div>
+        <div class="mc-desc">Configure a wheel of effects, then spin it together</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game HUD (contrôleur) -->
+  <div id="gameHud">
+    <div id="gameHudBar">
+      <span id="gameSpeed">Speed: 0%</span>
+      <span id="gameMissed">Missed: 0</span>
+      <button class="btn-game-stop" onclick="stopGameMode()">■ Stop</button>
+    </div>
+    <div id="gameHint">Tap anywhere to spawn a target for your partner</div>
+  </div>
+
+
+
+  <!-- Connecting screen (shown before peer connects) -->
+  <div id="ctrlConnecting">
+    <div class="brand-dot" style="width:36px;height:36px"></div>
+    <h2>Connecting...</h2>
+    <div id="ctrlConnStatus" style="font-family:var(--fm);font-size:12px;color:var(--muted)">Waiting for camera feed</div>
+    <div class="room-display" id="ctrlRoomDisplay"></div>
+    <p>Make sure your partner has opened the camera link with the matching room code.</p>
+    <button class="btn btn-g" onclick="exitControlMode()">Cancel</button>
+  </div>
+</div>
+
+  <!-- ── GUITAR HERO OVERLAY (body level, visible camera + control) ── -->
+  <div id="ghOverlay">
+    <div id="ghTrack">
+      <div class="gh-col" id="ghCol0" ontouchstart="ghPassiveTap(0,event)" onclick="ghPassiveTap(0,event)">
+        <div class="gh-col-label">🔴</div>
+        <div class="gh-hit-zone"><div class="gh-hit-circle"></div></div>
+        <div class="gh-col-tap-hint">tap</div>
+      </div>
+      <div class="gh-col" id="ghCol1" ontouchstart="ghPassiveTap(1,event)" onclick="ghPassiveTap(1,event)">
+        <div class="gh-col-label">🟠</div>
+        <div class="gh-hit-zone"><div class="gh-hit-circle"></div></div>
+        <div class="gh-col-tap-hint">tap</div>
+      </div>
+      <div class="gh-col" id="ghCol2" ontouchstart="ghPassiveTap(2,event)" onclick="ghPassiveTap(2,event)">
+        <div class="gh-col-label">🟢</div>
+        <div class="gh-hit-zone"><div class="gh-hit-circle"></div></div>
+        <div class="gh-col-tap-hint">tap</div>
+      </div>
+      <div class="gh-col" id="ghCol3" ontouchstart="ghPassiveTap(3,event)" onclick="ghPassiveTap(3,event)">
+        <div class="gh-col-label">🔵</div>
+        <div class="gh-hit-zone"><div class="gh-hit-circle"></div></div>
+        <div class="gh-col-tap-hint">tap</div>
+      </div>
+    </div>
+    <div id="ghHitLine"></div>
+    <div id="ghHud">
+      <span class="gh-stat" id="ghSpeed">Speed: 0%</span>
+      <span class="gh-stat" id="ghCombo">Combo: 0</span>
+      <span class="gh-stat" id="ghMiss">Miss: 0</span>
+      <button class="btn-game-stop" onclick="stopGuitarMode()">■ Stop</button>
+    </div>
+    <div class="gh-feedback" id="ghFeedback"></div>
+    <div id="ghCtrlPad" style="display:none;">
+      <div class="gh-ctrl-btn" ontouchstart="ghCtrlSend(0)" onclick="ghCtrlSend(0)">🔴</div>
+      <div class="gh-ctrl-btn" ontouchstart="ghCtrlSend(1)" onclick="ghCtrlSend(1)">🟠</div>
+      <div class="gh-ctrl-btn" ontouchstart="ghCtrlSend(2)" onclick="ghCtrlSend(2)">🟢</div>
+      <div class="gh-ctrl-btn" ontouchstart="ghCtrlSend(3)" onclick="ghCtrlSend(3)">🔵</div>
+    </div>
+  </div>
+
+  <!-- ── WHEEL SETUP (contrôleur uniquement, body level) ── -->
+  <div id="wheelSetup">
+    <h2>🎡 Configure the Wheel</h2>
+    <p>Tap segments to fill the 8 wheel slots — repeats allowed</p>
+    <div id="wheelSetupGrid"></div>
+    <div id="wheelSetupSlots"></div>
+    <div id="wheelSetupCount">0 / 8</div>
+    <div id="wheelSetupActions">
+      <button class="btn btn-g" onclick="wheelCancelSetup()">Cancel</button>
+      <button class="btn btn-a" id="wheelSetupStart" disabled onclick="wheelConfirmSetup()">Start</button>
+    </div>
+  </div>
+
+  <!-- ── WHEEL OVERLAY (body level, visible camera + control) ── -->
+  <div id="wheelOverlay">
+    <div id="wheelHud">
+      <span id="wheelSpeedLabel">Speed: 0%</span>
+      <button class="btn-game-stop" onclick="stopWheelMode()">■ Stop</button>
+    </div>
+    <div id="wheelArea">
+      <div id="wheelPointer"></div>
+      <div id="wheelDiscMask">
+        <div id="wheelDisc"></div>
+      </div>
+    </div>
+    <div id="wheelResult"></div>
+    <button id="wheelSpinBtn" onclick="wheelSpin()">🎡 SPIN</button>
+  </div>
+
+<script src="js/core.js"></script>
+<script src="js/target.js"></script>
+<script src="js/guitar.js"></script>
+<script src="js/wheel.js"></script>
+</body>
+</html>
