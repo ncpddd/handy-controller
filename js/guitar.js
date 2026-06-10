@@ -7,7 +7,7 @@ var GH_NOTE_SPEED_MIN   = 120;   // px/s vitesse défilement min
 var GH_NOTE_SPEED_MAX   = 400;   // px/s vitesse défilement max
 var GH_HIT_WINDOW       = 120;   // ms fenêtre de tolérance (±)
 var GH_SPEED_HIT        = -0.025;// -2.5% vitesse Handy par réussite
-var GH_SPEED_MISS       = 0.05;  // +5% vitesse Handy par raté
+var GH_SPEED_MISS       = 0.025; // +2.5% vitesse Handy par raté
 var GH_HIT_ZONE_Y_PCT   = 0.82;  // position zone de frappe (% hauteur écran)
 
 /* ── State ── */

@@ -185,10 +185,8 @@ async function initCameraMode(){
     });
     conn.on('close',function(){
       console.warn('Passive: data channel closed');
-      if(passiveMode){
-        passiveMode=false;
-        document.getElementById('passiveGameOverlay').classList.remove('active');
-      }
+      camConn=null;
+      resetAllGames();
     });
   });
 
@@ -424,6 +422,31 @@ function exitControlMode(){
   document.getElementById('ctrlConnecting').style.display='flex';
   document.getElementById('ctrlVideo').srcObject=null;
   document.getElementById('cursorDot').style.display='none';
+}
+
+/* ── RESET (passif) : le contrôleur a été rechargé / déconnecté ── */
+function resetAllGames(){
+  // Target
+  passiveMode=false;
+  var passiveOverlay=document.getElementById('passiveGameOverlay');
+  passiveOverlay.classList.remove('active');
+  passiveOverlay.querySelectorAll('.passive-circle').forEach(function(el){el.remove();});
+
+  // Guitar Hero
+  ghActive=false;
+  if(ghRafId){cancelAnimationFrame(ghRafId);ghRafId=null;}
+  ghNotes.forEach(function(n){if(n.el&&n.el.parentNode)n.el.parentNode.removeChild(n.el);});
+  ghNotes=[];
+  document.getElementById('ghOverlay').classList.remove('active');
+  document.getElementById('ghCtrlPad').style.display='none';
+
+  // Wheel
+  wheelActive=false;wheelSpinning=false;
+  if(wheelRestoreTimer){clearTimeout(wheelRestoreTimer);wheelRestoreTimer=null;}
+  document.getElementById('wheelOverlay').classList.remove('active');
+  document.getElementById('wheelArea').classList.remove('show');
+  document.getElementById('wheelResult').classList.remove('show');
+  document.getElementById('wheelSetup').classList.remove('active');
 }
 
 /* ── PEER DATA MESSAGES ── */

@@ -54,6 +54,7 @@
   left:50%;transform:translateX(-50%);
   width:44px;height:24px;border-radius:8px;
   background:var(--col-color);
+  border:2px solid rgba(255,255,255,0.6);
   box-shadow:0 0 14px var(--col-color);
   pointer-events:none;
   will-change:top;
