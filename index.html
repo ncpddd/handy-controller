@@ -44,12 +44,17 @@
     <div id="camConnectedDot"></div>
     <div id="camLabel">● LIVE</div>
   </div>
+  <!-- Cache le flux vidéo des deux côtés (surprise reveal) -->
+  <div id="camHideOverlay" class="show"></div>
+  <button id="camVisibilityBtn" onclick="camToggleVideoVisibility()">🙈</button>
 </div>
 
 <!-- ── CONTROL MODE (input=control) ── -->
 <div id="control-mode">
   <!-- Background: partner's camera feed -->
   <video id="ctrlVideo" autoplay playsinline muted></video>
+  <!-- Caché par le passif pour faire une surprise -->
+  <div id="ctrlHideOverlay" class="show"></div>
   <!-- Canvas for touch input -->
   <canvas id="ctrlCanvas"></canvas>
   <!-- Cursor dot -->

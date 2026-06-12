@@ -135,6 +135,7 @@ function velToRGB(vel){
    CAMERA MODE
 ════════════════════════════════════════════════════════ */
 var camPeer=null,camConn=null,camRoomCode='';
+var camVideoHidden=true; // côté passif : cache/révèle le flux vidéo des deux côtés (caché par défaut)
 
 function generateRoomCode(){
   var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -188,6 +189,8 @@ async function initCameraMode(){
     // Ne pas activer le jeu tout de suite — attendre le message game_start
     conn.on('open',function(){
       console.log('Passive: data channel open');
+      // Synchroniser l'état caché/révélé de la caméra avec le contrôleur qui vient de se connecter
+      conn.send(JSON.stringify({type:'cam_visibility',hidden:camVideoHidden}));
     });
     conn.on('data',function(data){
       console.log('Passive received data:',data);
@@ -203,6 +206,16 @@ async function initCameraMode(){
   camPeer.on('error',function(e){
     document.getElementById('camStatus').textContent='Error: '+e.message;
   });
+}
+
+/* ── Visibilité caméra (passif) : cache/révèle le flux vidéo des deux côtés ── */
+function camToggleVideoVisibility(){
+  camVideoHidden=!camVideoHidden;
+  document.getElementById('camHideOverlay').classList.toggle('show',camVideoHidden);
+  document.getElementById('camVisibilityBtn').textContent=camVideoHidden?'🙈':'👁️';
+  if(camConn&&camConn.open){
+    camConn.send(JSON.stringify({type:'cam_visibility',hidden:camVideoHidden}));
+  }
 }
 
 function camToggleLinkForm(){
@@ -445,10 +458,16 @@ function exitControlMode(){
   document.getElementById('ctrlConnecting').style.display='flex';
   document.getElementById('ctrlVideo').srcObject=null;
   document.getElementById('cursorDot').style.display='none';
+  document.getElementById('ctrlHideOverlay').classList.add('show');
 }
 
 /* ── RESET (passif) : le contrôleur a été rechargé / déconnecté ── */
 function resetAllGames(){
+  // Visibilité caméra (cachée par défaut)
+  camVideoHidden=true;
+  document.getElementById('camHideOverlay').classList.add('show');
+  document.getElementById('camVisibilityBtn').textContent='🙈';
+
   // Target
   passiveMode=false;
   var passiveOverlay=document.getElementById('passiveGameOverlay');
@@ -569,6 +588,9 @@ function handlePeerData(data){
     } else if(msg.type==='rally_stop'){
       // Côté passif : le contrôleur a arrêté le mode RALLY
       rallyPassiveStop();
+    } else if(msg.type==='cam_visibility'){
+      // Côté contrôleur : le passif cache/révèle son flux vidéo
+      document.getElementById('ctrlHideOverlay').classList.toggle('show',msg.hidden);
     } else if(msg.type==='speed_update'){
       // Côté passif : afficher la vitesse courante du Handy envoyée par le contrôleur
       if(msg.mode==='gh'){
