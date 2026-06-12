@@ -13,9 +13,13 @@ var WHEEL_SEGMENT_TYPES=[
   {id:'minus10',  icon:'▼',  label:'-10%'},
   {id:'maxspeed', icon:'🔥', label:'Max 3s'},
   {id:'slow10',   icon:'🐌', label:'Slow 10s'},
+  {id:'pulse5',   icon:'〜', label:'Pulse 5s'},
+  {id:'chaos8',   icon:'🌀', label:'Chaos 8s'},
+  {id:'ballsdeep5', icon:'🍑', label:'Balls deep 5s'},
+  {id:'tiponly5', icon:'👆', label:'Tip only 5s'},
   {id:'surprise', icon:'🎁', label:'Surprise'}
 ];
-var WHEEL_COLORS=['#4db8ff','#2e8fd6','#4dff91','#1fcf6e','#ffaa00','#ff8800','#ff4d4d','#c8ff00','#cc66ff'];
+var WHEEL_COLORS=['#4db8ff','#2e8fd6','#4dff91','#1fcf6e','#ffaa00','#ff8800','#ff4d4d','#c8ff00','#ff66cc','#9966ff','#00d4ff','#ff9966','#cc66ff'];
 var WHEEL_SPIN_DURATION=4000; // ms
 var WHEEL_RESULT_HOLD  =1800; // ms
 
@@ -29,6 +33,7 @@ var wheelHampRunning=false;
 var wheelSpinning=false;
 var wheelRestoreTimer=null;
 var wheelFlashTimer=null;
+var wheelEffectTimer=null; // interval/timeout d'un effet périodique (pulse/chaos) en cours
 var wheelSpinLock=false;  // true tant qu'un effet temporaire (max/slow/pause) bloque le SPIN
 var wheelLastIndex=-1;     // évite (avec une faible probabilité de garder quand même) deux fois le même résultat de suite
 
@@ -55,7 +60,7 @@ function renderWheelSetup(){
     b.style.setProperty('--seg-color',WHEEL_COLORS[i]);
     b.innerHTML='<div class="wt-icon">'+t.icon+'</div><div class="wt-label">'+t.label+'</div>';
     b.addEventListener('click',function(){
-      if(wheelSetupPicks.length>=8)return;
+      if(wheelSetupPicks.length>=10)return;
       wheelSetupPicks.push(t.id);
       renderWheelSetupSlots();
     });
@@ -80,10 +85,10 @@ function renderWheelSetupSlots(){
     });
     slots.appendChild(chip);
   });
-  document.getElementById('wheelSetupCount').textContent=wheelSetupPicks.length+' / 8';
-  document.getElementById('wheelSetupStart').disabled=wheelSetupPicks.length!==8;
+  document.getElementById('wheelSetupCount').textContent=wheelSetupPicks.length+' / 10';
+  document.getElementById('wheelSetupStart').disabled=wheelSetupPicks.length<1;
   document.querySelectorAll('#wheelSetupGrid .wheel-type-btn').forEach(function(b){
-    b.classList.toggle('disabled',wheelSetupPicks.length>=8);
+    b.classList.toggle('disabled',wheelSetupPicks.length>=10);
   });
 }
 
@@ -94,7 +99,7 @@ function wheelCancelSetup(){
 }
 
 function wheelConfirmSetup(){
-  if(wheelSetupPicks.length!==8)return;
+  if(wheelSetupPicks.length<1||wheelSetupPicks.length>10)return;
   wheelConfig=wheelSetupPicks.slice();
   document.getElementById('wheelSetup').classList.remove('active');
 
@@ -164,7 +169,7 @@ function wheelSpin(){
 
   var n=wheelConfig.length;
   var resultIndex=Math.floor(Math.random()*n);
-  if(resultIndex===wheelLastIndex&&Math.random()<0.7){
+  if(n>1&&resultIndex===wheelLastIndex&&Math.random()<0.7){
     resultIndex=Math.floor(Math.random()*n);
   }
   wheelLastIndex=resultIndex;
@@ -270,6 +275,7 @@ async function wheelSetVelocity(v){
 /* ── Application de l'effet (contrôleur uniquement) ── */
 function wheelApplyEffect(effectId){
   if(wheelRestoreTimer){clearTimeout(wheelRestoreTimer);wheelRestoreTimer=null;}
+  wheelClearEffectTimer();
   switch(effectId){
     case 'plus5':    wheelAdjustSpeed(0.05);      break;
     case 'plus10':   wheelAdjustSpeed(0.10);      break;
@@ -295,6 +301,26 @@ function wheelApplyEffect(effectId){
       wheelFlashEdges('flash-green',10000);
       wheelLockSpin(10000);
       break;
+    case 'pulse5':
+      wheelPulse(5000);
+      wheelFlashEdges('flash-pink',5000);
+      wheelLockSpin(5000);
+      break;
+    case 'chaos8':
+      wheelChaos(8000);
+      wheelFlashEdges('flash-purple',8000);
+      wheelLockSpin(8000);
+      break;
+    case 'ballsdeep5':
+      wheelTempRange(0,30,5000);
+      wheelFlashEdges('flash-blue',5000);
+      wheelLockSpin(5000);
+      break;
+    case 'tiponly5':
+      wheelTempRange(60,80,5000);
+      wheelFlashEdges('flash-orange',5000);
+      wheelLockSpin(5000);
+      break;
   }
 }
 
@@ -317,6 +343,53 @@ function wheelLockSpin(durationMs){
   setTimeout(function(){
     wheelSpinLock=false;
     if(spinBtn&&!wheelSpinning)spinBtn.disabled=false;
+  },durationMs);
+}
+
+// Annule l'effet périodique (pulse/chaos) en cours, s'il y en a un
+function wheelClearEffectTimer(){
+  if(wheelEffectTimer){clearInterval(wheelEffectTimer);clearTimeout(wheelEffectTimer);wheelEffectTimer=null;}
+}
+
+// Alterne entre deux vitesses toutes les 500ms pendant durationMs, puis revient à wheelSpeed
+function wheelPulse(durationMs){
+  var low=0.15,high=0.85,toggle=true;
+  wheelEnsureHamp(high);
+  wheelEffectTimer=setInterval(function(){
+    toggle=!toggle;
+    wheelSetVelocity(toggle?high:low);
+  },500);
+  wheelRestoreTimer=setTimeout(function(){
+    wheelClearEffectTimer();
+    wheelRestoreTimer=null;
+    wheelSetVelocity(wheelSpeed);
+  },durationMs);
+}
+
+// Vitesse aléatoire toutes les 0.8-1.5s pendant durationMs, puis revient à wheelSpeed
+function wheelChaos(durationMs){
+  function randomTick(){
+    var v=Math.round((0.1+Math.random()*0.9)*100)/100;
+    wheelEnsureHamp(v);
+    wheelEffectTimer=setTimeout(randomTick,800+Math.random()*700);
+  }
+  randomTick();
+  wheelRestoreTimer=setTimeout(function(){
+    wheelClearEffectTimer();
+    wheelRestoreTimer=null;
+    wheelSetVelocity(wheelSpeed);
+  },durationMs);
+}
+
+// Restreint l'amplitude de course du Handy à [min,max] (%) pendant durationMs, vitesse inchangée
+function wheelSetRange(min,max){
+  fetch(V3+'/hamp/stroke/zone',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({min:min,max:max})}).catch(function(){});
+}
+function wheelTempRange(min,max,durationMs){
+  wheelSetRange(min,max);
+  wheelRestoreTimer=setTimeout(function(){
+    wheelRestoreTimer=null;
+    wheelSetRange(0,100);
   },durationMs);
 }
 
@@ -362,6 +435,7 @@ async function stopWheelMode(){
   wheelActive=false;wheelSpinning=false;
   if(wheelRestoreTimer){clearTimeout(wheelRestoreTimer);wheelRestoreTimer=null;}
   if(wheelFlashTimer){clearTimeout(wheelFlashTimer);wheelFlashTimer=null;}
+  wheelClearEffectTimer();
   wheelSpinLock=false;
   document.getElementById('wheelEdgeFlash').className='';
   document.getElementById('wheelOverlay').classList.remove('active');
@@ -373,6 +447,7 @@ async function stopWheelMode(){
     if(gameDataConn&&gameDataConn.open){
       gameDataConn.send(JSON.stringify({type:'wheel_stop'}));
     }
+    wheelSetRange(0,100);
     if(wheelHampRunning){
       try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:wheelHdrs(false)});}catch(e){}
       wheelHampRunning=false;

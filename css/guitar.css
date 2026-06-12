@@ -22,11 +22,11 @@
 .gh-col:last-child{border-right:none;}
 .gh-col.gh-flash{background:rgba(255,255,255,0.12)!important;}
 
-/* Couleurs des 4 colonnes */
-.gh-col:nth-child(1){--col-color:#ff4d4d;}
-.gh-col:nth-child(2){--col-color:#ffaa00;}
-.gh-col:nth-child(3){--col-color:#4dff91;}
-.gh-col:nth-child(4){--col-color:#4db8ff;}
+/* Couleurs des 4 colonnes (décalées de 1 : #ghAllowedZone est le 1er enfant de #ghTrack) */
+.gh-col:nth-child(2){--col-color:#ff4d4d;}
+.gh-col:nth-child(3){--col-color:#ffaa00;}
+.gh-col:nth-child(4){--col-color:#4dff91;}
+.gh-col:nth-child(5){--col-color:#4db8ff;}
 
 /* Zone de frappe en bas */
 .gh-hit-zone{

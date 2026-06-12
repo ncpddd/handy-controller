@@ -65,6 +65,26 @@
   box-shadow:inset 0 0 30px #4dff91, 0 0 30px #4dff91;
   animation:wheelEdgeBlink 1.2s infinite steps(1);
 }
+#wheelEdgeFlash.flash-pink{
+  border-color:#ff66cc;
+  box-shadow:inset 0 0 30px #ff66cc, 0 0 30px #ff66cc;
+  animation:wheelEdgeBlink .5s infinite steps(1);
+}
+#wheelEdgeFlash.flash-purple{
+  border-color:#9966ff;
+  box-shadow:inset 0 0 30px #9966ff, 0 0 30px #9966ff;
+  animation:wheelEdgeBlink .12s infinite steps(1);
+}
+#wheelEdgeFlash.flash-blue{
+  border-color:#00d4ff;
+  box-shadow:inset 0 0 30px #00d4ff, 0 0 30px #00d4ff;
+  animation:wheelEdgeBlink 1.6s infinite steps(1);
+}
+#wheelEdgeFlash.flash-orange{
+  border-color:#ff9966;
+  box-shadow:inset 0 0 30px #ff9966, 0 0 30px #ff9966;
+  animation:wheelEdgeBlink .4s infinite steps(1);
+}
 @keyframes wheelEdgeBlink{
   0%,49%{opacity:1;}
   50%,100%{opacity:0;}
