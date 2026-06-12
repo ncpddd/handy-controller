@@ -16,6 +16,9 @@
 </head>
 <body>
 
+<!-- ── Vitesse Handy affichée côté passif, commune à tous les modes ── -->
+<div id="passiveSpeedHud">Speed: pause</div>
+
 <!-- ── CAMERA MODE (input=camera) ── -->
 <div id="camera-mode">
     <!-- Passive overlay : targets to click -->
@@ -188,6 +191,7 @@
 
   <!-- ── WHEEL OVERLAY (body level, visible camera + control) ── -->
   <div id="wheelOverlay">
+    <div id="wheelEdgeFlash"></div>
     <div id="wheelHud">
       <span id="wheelSpeedLabel">Speed: 0%</span>
       <button class="btn-game-stop" onclick="stopWheelMode()">■ Stop</button>

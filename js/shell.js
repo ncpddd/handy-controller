@@ -62,6 +62,8 @@ function shellPassiveStart(){
   document.getElementById('shellHud').classList.remove('show');
   document.getElementById('shellHint').textContent='Waiting for controller…';
   document.getElementById('shellHint').classList.add('show');
+  document.getElementById('passiveSpeedHud').textContent='Speed: pause';
+  document.getElementById('passiveSpeedHud').classList.add('show');
 }
 
 /* ── Stop ── */
@@ -294,4 +296,7 @@ function shellUpdateHud(){
   document.getElementById('shellSpeedLabel').textContent=shellHampRunning
     ? 'Speed: '+Math.round(shellSpeed*100)+'%'
     : 'Speed: pause';
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'speed_update',mode:'shell',speed:shellSpeed,running:shellHampRunning}));
+  }
 }

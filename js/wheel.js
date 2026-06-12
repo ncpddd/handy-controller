@@ -28,6 +28,8 @@ var wheelSpeed=0;          // vitesse "de base" 0..1
 var wheelHampRunning=false;
 var wheelSpinning=false;
 var wheelRestoreTimer=null;
+var wheelFlashTimer=null;
+var wheelSpinLock=false;  // true tant qu'un effet temporaire (max/slow/pause) bloque le SPIN
 var wheelLastIndex=-1;     // évite (avec une faible probabilité de garder quand même) deux fois le même résultat de suite
 
 /* ── Setup (contrôleur) ── */
@@ -117,6 +119,8 @@ function wheelPassiveStart(config){
   document.getElementById('wheelOverlay').classList.add('active');
   document.getElementById('wheelHud').classList.remove('show');
   document.getElementById('wheelSpinBtn').classList.remove('show');
+  document.getElementById('passiveSpeedHud').textContent='Speed: pause';
+  document.getElementById('passiveSpeedHud').classList.add('show');
 }
 
 /* ── Construction visuelle de la roue (commun ctrl + passif) ── */
@@ -216,7 +220,7 @@ function wheelDoSpin(resultIndex,rotation,effectId){
       area.classList.remove('show');
       result.classList.remove('show');
       wheelSpinning=false;
-      if(spinBtn)spinBtn.disabled=false;
+      if(spinBtn)spinBtn.disabled=wheelSpinLock;
     },WHEEL_RESULT_HOLD);
   },WHEEL_SPIN_DURATION);
 }
@@ -271,11 +275,49 @@ function wheelApplyEffect(effectId){
     case 'plus10':   wheelAdjustSpeed(0.10);      break;
     case 'minus5':   wheelAdjustSpeed(-0.05);     break;
     case 'minus10':  wheelAdjustSpeed(-0.10);     break;
-    case 'maxspeed': wheelTempSpeed(1.0,3000);    break;
-    case 'slow10':   wheelTempSpeed(0.05,10000);  break;
-    case 'pause5':   wheelPause(5000);            break;
-    case 'pause10':  wheelPause(10000);           break;
+    case 'maxspeed':
+      wheelTempSpeed(1.0,3000);
+      wheelFlashEdges('flash-red',3000);
+      wheelLockSpin(3000);
+      break;
+    case 'slow10':
+      wheelTempSpeed(0.05,10000);
+      wheelFlashEdges('flash-yellow',10000);
+      wheelLockSpin(10000);
+      break;
+    case 'pause5':
+      wheelPause(5000);
+      wheelFlashEdges('flash-green',5000);
+      wheelLockSpin(5000);
+      break;
+    case 'pause10':
+      wheelPause(10000);
+      wheelFlashEdges('flash-green',10000);
+      wheelLockSpin(10000);
+      break;
   }
+}
+
+// Fait clignoter les bords de l'écran pendant durationMs
+function wheelFlashEdges(colorClass,durationMs){
+  var el=document.getElementById('wheelEdgeFlash');
+  if(wheelFlashTimer){clearTimeout(wheelFlashTimer);}
+  el.className=colorClass;
+  wheelFlashTimer=setTimeout(function(){
+    el.className='';
+    wheelFlashTimer=null;
+  },durationMs);
+}
+
+// Rend le bouton SPIN non-cliquable pendant durationMs
+function wheelLockSpin(durationMs){
+  wheelSpinLock=true;
+  var spinBtn=document.getElementById('wheelSpinBtn');
+  if(spinBtn)spinBtn.disabled=true;
+  setTimeout(function(){
+    wheelSpinLock=false;
+    if(spinBtn&&!wheelSpinning)spinBtn.disabled=false;
+  },durationMs);
 }
 
 function wheelAdjustSpeed(delta){
@@ -298,6 +340,7 @@ function wheelPause(durationMs){
   if(wheelHampRunning){
     fetch(V3+'/hamp/stop',{method:'PUT',headers:wheelHdrs(false)}).catch(function(){});
     wheelHampRunning=false;
+    wheelUpdateHud();
   }
   wheelRestoreTimer=setTimeout(function(){
     wheelRestoreTimer=null;
@@ -309,12 +352,18 @@ function wheelUpdateHud(){
   document.getElementById('wheelSpeedLabel').textContent=wheelHampRunning
     ? 'Speed: '+Math.round(wheelSpeed*100)+'%'
     : 'Speed: pause';
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'speed_update',mode:'wheel',speed:wheelSpeed,running:wheelHampRunning}));
+  }
 }
 
 /* ── Stop ── */
 async function stopWheelMode(){
   wheelActive=false;wheelSpinning=false;
   if(wheelRestoreTimer){clearTimeout(wheelRestoreTimer);wheelRestoreTimer=null;}
+  if(wheelFlashTimer){clearTimeout(wheelFlashTimer);wheelFlashTimer=null;}
+  wheelSpinLock=false;
+  document.getElementById('wheelEdgeFlash').className='';
   document.getElementById('wheelOverlay').classList.remove('active');
   document.getElementById('wheelArea').classList.remove('show');
   document.getElementById('wheelResult').classList.remove('show');

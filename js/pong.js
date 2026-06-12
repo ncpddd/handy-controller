@@ -149,6 +149,9 @@ function rallyUpdateHud(){
     : 'Speed: pause';
   document.getElementById('rallyHits').textContent='Wall: '+rallyHits;
   document.getElementById('rallyMisses').textContent='Misses: '+rallyMisses;
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'speed_update',mode:'rally',speed:rallySpeed,running:rallyHampRunning}));
+  }
 }
 
 /* ── Stop (contrôleur) ── */
@@ -184,6 +187,8 @@ function rallyPassiveStart(config){
 
   document.getElementById('rallyOverlay').classList.add('active');
   document.getElementById('rallyHud').classList.remove('show');
+  document.getElementById('passiveSpeedHud').textContent='Speed: pause';
+  document.getElementById('passiveSpeedHud').classList.add('show');
 
   rallyBuildArea();
   rallyAttachControls();
@@ -372,6 +377,7 @@ function rallyPassiveStop(){
   document.getElementById('rallyOverlay').classList.remove('active');
   document.getElementById('rallyArea').innerHTML='';
   rallyBalls=[];
+  document.getElementById('passiveSpeedHud').classList.remove('show');
 }
 
 window.addEventListener('resize',function(){

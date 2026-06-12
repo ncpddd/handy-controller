@@ -42,6 +42,34 @@
 }
 #wheelOverlay.active{display:flex;}
 
+/* Clignotement des bords pendant un effet temporaire (max/slow/pause) */
+#wheelEdgeFlash{
+  position:fixed;inset:0;z-index:21;
+  pointer-events:none;
+  border:8px solid transparent;
+  box-sizing:border-box;
+  opacity:0;
+}
+#wheelEdgeFlash.flash-red{
+  border-color:var(--danger);
+  box-shadow:inset 0 0 30px var(--danger), 0 0 30px var(--danger);
+  animation:wheelEdgeBlink .2s infinite steps(1);
+}
+#wheelEdgeFlash.flash-yellow{
+  border-color:#ffcc00;
+  box-shadow:inset 0 0 30px #ffcc00, 0 0 30px #ffcc00;
+  animation:wheelEdgeBlink .6s infinite steps(1);
+}
+#wheelEdgeFlash.flash-green{
+  border-color:#4dff91;
+  box-shadow:inset 0 0 30px #4dff91, 0 0 30px #4dff91;
+  animation:wheelEdgeBlink 1.2s infinite steps(1);
+}
+@keyframes wheelEdgeBlink{
+  0%,49%{opacity:1;}
+  50%,100%{opacity:0;}
+}
+
 #wheelArea{
   position:relative;width:78vw;max-width:340px;aspect-ratio:1/1;
   display:flex;align-items:center;justify-content:center;

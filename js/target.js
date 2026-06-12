@@ -195,6 +195,9 @@ function updateGameHud(){
     ? 'Speed: '+Math.round(gameSpeed*100)+'%'
     : 'Speed: pause';
   document.getElementById('gameMissed').textContent='Missed: '+gameMissed+' · Next: '+gameCircleDuration.toFixed(1)+'s';
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'speed_update',mode:'target',speed:gameSpeed,running:gameHampRunning}));
+  }
 }
 
 async function stopGameMode(){
@@ -225,6 +228,8 @@ async function stopGameMode(){
 function initPassiveGame(){
   passiveMode=true;
   document.getElementById('passiveGameOverlay').classList.add('active');
+  document.getElementById('passiveSpeedHud').textContent='Speed: pause';
+  document.getElementById('passiveSpeedHud').classList.add('show');
 }
 
 function passiveSpawnCircle(id,xPct,yPct,duration){

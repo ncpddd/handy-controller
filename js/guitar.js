@@ -304,6 +304,9 @@ function ghUpdateHud(){
     : 'Speed: pause';
   document.getElementById('ghCombo').textContent='Combo: '+ghCombo;
   document.getElementById('ghMiss').textContent='Miss: '+ghMiss;
+  if(ghIsCtrl&&gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'speed_update',mode:'gh',speed:ghSpeed,running:ghHampRunning}));
+  }
 }
 
 var ghFeedbackTimer=null;

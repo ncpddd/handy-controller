@@ -464,8 +464,10 @@ function resetAllGames(){
   document.getElementById('ghCtrlPad').style.display='none';
 
   // Wheel
-  wheelActive=false;wheelSpinning=false;
+  wheelActive=false;wheelSpinning=false;wheelSpinLock=false;
   if(wheelRestoreTimer){clearTimeout(wheelRestoreTimer);wheelRestoreTimer=null;}
+  if(wheelFlashTimer){clearTimeout(wheelFlashTimer);wheelFlashTimer=null;}
+  document.getElementById('wheelEdgeFlash').className='';
   document.getElementById('wheelOverlay').classList.remove('active');
   document.getElementById('wheelArea').classList.remove('show');
   document.getElementById('wheelResult').classList.remove('show');
@@ -483,6 +485,9 @@ function resetAllGames(){
   document.getElementById('rallyHud').classList.remove('show');
   document.getElementById('rallyArea').innerHTML='';
   rallyBalls=[];
+
+  // Passive speed HUD (commun à tous les modes)
+  document.getElementById('passiveSpeedHud').classList.remove('show');
 }
 
 /* ── PEER DATA MESSAGES ── */
@@ -503,6 +508,7 @@ function handlePeerData(data){
       var overlay=document.getElementById('passiveGameOverlay');
       overlay.classList.remove('active');
       overlay.querySelectorAll('.passive-circle').forEach(function(el){el.remove();});
+      document.getElementById('passiveSpeedHud').classList.remove('show');
     } else if(msg.type==='gh_start'){
       // Côté passif : démarrer Guitar Hero
       ghPassiveStart();
@@ -533,6 +539,7 @@ function handlePeerData(data){
       document.getElementById('wheelOverlay').classList.remove('active');
       document.getElementById('wheelArea').classList.remove('show');
       document.getElementById('wheelResult').classList.remove('show');
+      document.getElementById('passiveSpeedHud').classList.remove('show');
     } else if(msg.type==='shell_init'){
       // Côté passif : le contrôleur a lancé le Shell Game
       shellPassiveStart();
@@ -546,6 +553,7 @@ function handlePeerData(data){
       // Côté passif : le contrôleur a arrêté le Shell Game
       shellActive=false;shellRoundActive=false;shellGuessable=false;
       document.getElementById('shellOverlay').classList.remove('active');
+      document.getElementById('passiveSpeedHud').classList.remove('show');
     } else if(msg.type==='rally_init'){
       // Côté passif : le contrôleur a lancé le mode RALLY
       rallyPassiveStart({ballCount:msg.ballCount,ballSpeedLevel:msg.ballSpeedLevel,paddleSizeLevel:msg.paddleSizeLevel});
@@ -561,6 +569,15 @@ function handlePeerData(data){
     } else if(msg.type==='rally_stop'){
       // Côté passif : le contrôleur a arrêté le mode RALLY
       rallyPassiveStop();
+    } else if(msg.type==='speed_update'){
+      // Côté passif : afficher la vitesse courante du Handy envoyée par le contrôleur
+      if(msg.mode==='gh'){
+        ghSpeed=msg.speed; ghHampRunning=msg.running; ghUpdateHud();
+      } else {
+        document.getElementById('passiveSpeedHud').textContent=msg.running
+          ? 'Speed: '+Math.round(msg.speed*100)+'%'
+          : 'Speed: pause';
+      }
     }
   }catch(e){console.error('handlePeerData error:',e,data);}
 }
