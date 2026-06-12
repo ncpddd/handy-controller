@@ -17,6 +17,7 @@ var sendInterval=null;
 var segmentSamples=[]; // {pos,t} échantillons du segment en cours d'enregistrement
 var xptBusy=false;     // une seule requête /hdsp/xpt en vol à la fois
 var rttEstimate=150;   // ms, moyenne mobile (EMA) du round-trip mesuré
+var basicActive=false; // true uniquement quand le mode BASIC est sélectionné (évite que le canvas pilote le Handy dans les autres modes)
 
 /* État partagé entre les modes de jeu */
 var gameDataConn=null;      // connexion PeerJS données vers le passif
@@ -54,7 +55,7 @@ async function call(path,method,body){
 async function stopHandy(){
   try{
     if(useV3)await call('/hdsp/xpt','PUT',{xp:curPos});
-    else await fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(100-curPos)/100})});
+    else await fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:curPos/100})});
   }catch(e){}
   var ms=document.getElementById('ms');if(ms)ms.textContent='idle';
 }
@@ -62,6 +63,8 @@ async function stopHandy(){
 /* ── Retour au menu de sélection de mode (BASIC) ── */
 function backToModeSelect(){
   stopHandy();
+  basicActive=false;
+  if(drawing){drawing=false;stopSendLoop();segmentSamples=[];}
   document.getElementById('ctrlTopBar').style.display='none';
   document.getElementById('ctrlBottomBar').style.display='none';
   document.getElementById('gameModeSelect').classList.add('active');
@@ -116,7 +119,7 @@ async function playSegment(samples){
   try{
     var r=await fetch(V2+'/hdsp/xpt',{method:'PUT',
       headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
-      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:duration,position:(100-target)/100})});
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:duration,position:target/100})});
     if(r.ok)rttEstimate=Math.round(rttEstimate*0.7+(performance.now()-sentAt)*0.3);
   }catch(e){console.warn('xpt error:',e);}
   finally{xptBusy=false;}
@@ -368,6 +371,7 @@ function initCtrlCanvas(){
 
   // Events — exactement comme initCanvas() mais sur plein écran
   c.addEventListener('mousedown',function(e){
+    if(!basicActive)return;
     drawing=true;
     var y=e.clientY;
     lastY=y;lastT=performance.now();
@@ -379,12 +383,13 @@ function initCtrlCanvas(){
     startSendLoop();
   });
   c.addEventListener('mousemove',function(e){
-    if(!drawing)return;
+    if(!basicActive||!drawing)return;
     ctrlOnMove(e.clientY);
   });
-  c.addEventListener('mouseup',function(){ctrlOnEnd();});
-  c.addEventListener('mouseleave',function(){ctrlOnEnd();});
+  c.addEventListener('mouseup',function(){if(basicActive)ctrlOnEnd();});
+  c.addEventListener('mouseleave',function(){if(basicActive)ctrlOnEnd();});
   c.addEventListener('touchstart',function(e){
+    if(!basicActive)return;
     drawing=true;
     var y=e.touches[0].clientY;
     lastY=y;lastT=performance.now();
@@ -396,11 +401,12 @@ function initCtrlCanvas(){
     startSendLoop();
   },{passive:true});
   c.addEventListener('touchmove',function(e){
+    if(!basicActive)return;
     e.preventDefault();
     if(!drawing)return;
     ctrlOnMove(e.touches[0].clientY);
   },{passive:false});
-  c.addEventListener('touchend',function(){ctrlOnEnd();});
+  c.addEventListener('touchend',function(){if(basicActive)ctrlOnEnd();});
 }
 
 function ctrlOnMove(clientY){
@@ -427,7 +433,7 @@ function ctrlOnEnd(){
   // Commande finale sans anticipation : se poser exactement à la position relâchée
   if(ck){
     fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
-      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(100-curPos)/100})}).catch(function(){});
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:curPos/100})}).catch(function(){});
   }
 }
 

@@ -5,7 +5,7 @@
 /* Config — toutes les variables du jeu */
 var GAME_CYCLE_SPEED_MIN    = 0.0;   // vitesse de départ (0.0 - 1.0)
 var GAME_CYCLE_SPEED_MAX    = 1.0;   // vitesse max
-var GAME_SPEED_INCREMENT    = 0.035; // +3.5% par raté
+var GAME_SPEED_INCREMENT    = 0.05;  // +5% par raté
 var GAME_CIRCLE_DURATION    = 5.0;  // secondes pour cliquer (départ)
 var GAME_CIRCLE_DURATION_MIN= 0.5;   // minimum
 var GAME_CIRCLE_DURATION_DECAY=0.1; // réduit par raté
@@ -30,6 +30,7 @@ function startBasicMode(){
   document.getElementById('ctrlConnecting').style.display='none';
   document.getElementById('ctrlTopBar').style.display='flex';
   document.getElementById('ctrlBottomBar').style.display='flex';
+  basicActive=true;
   // Le canvas de contrôle est déjà initialisé
 }
 
@@ -41,6 +42,7 @@ async function startGameMode(){
   document.getElementById('ctrlBottomBar').style.display='none';
   document.getElementById('gameHud').classList.add('active');
 
+  basicActive=false;
   gameActive=true;gameMode=true;
   gameSpeed=GAME_CYCLE_SPEED_MIN;
   gameHampRunning=false;
@@ -59,7 +61,7 @@ async function startGameMode(){
   // Touch/click sur le canvas = spawner un cercle
   var c=document.getElementById('ctrlCanvas');
   c.addEventListener('click',onGameControllerClick);
-  c.addEventListener('touchend',onGameControllerTouch);
+  c.addEventListener('touchend',onGameControllerTouch,{passive:false});
 }
 
 /* ── HAMP ── */
@@ -77,8 +79,15 @@ async function gameLaunchHamp(){
 }
 
 async function gameSetVelocity(v){
-  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
+  v=Math.round(v*100)/100;
   if(!gameHampRunning)return;
+  if(v<=0){
+    try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});}catch(e){}
+    gameHampRunning=false;
+    updateGameHud();
+    return;
+  }
+  v=Math.max(0.05,Math.min(1,v));
   try{
     await fetch(V3+'/hamp/velocity',{
       method:'PUT',
@@ -96,6 +105,7 @@ function onGameControllerClick(e){
 }
 function onGameControllerTouch(e){
   if(!gameActive||!gameMode)return;
+  e.preventDefault(); // évite le 'click' synthétique qui suit (double spawn)
   if(e.changedTouches.length===0)return;
   var t=e.changedTouches[0];
   var xPct=Math.round((t.clientX/window.innerWidth)*100);
@@ -169,8 +179,8 @@ function onCircleHit(id){
   clearTimeout(circle.timeout);
   if(circle.el&&circle.el.parentNode)circle.el.parentNode.removeChild(circle.el);
   gameCircles=gameCircles.filter(function(c){return c.id!==id;});
-  // Récompense : -2% vitesse (sans toucher au timer des cercles)
-  gameSpeed=Math.round(Math.max(0,gameSpeed-0.02)*100)/100;
+  // Récompense : -3% vitesse (sans toucher au timer des cercles)
+  gameSpeed=Math.round(Math.max(0,gameSpeed-0.03)*100)/100;
   updateGameHud();
   if(gameHampRunning) gameSetVelocity(gameSpeed);
   // Notifier le passif

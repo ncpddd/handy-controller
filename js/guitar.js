@@ -8,8 +8,6 @@ var GH_NOTE_SPEED_MAX   = 50;    // %hauteur/s vitesse défilement max
 var GH_NOTE_SPEED_DECAY = 0.25;  // réduction par hit (%hauteur/s)
 var GH_NOTE_SPEED_GROWTH= 1;     // augmentation par miss (%hauteur/s)
 var GH_NOTE_SPAWN_Y     = -6;    // % position de spawn (au-dessus de l'écran)
-var GH_MISS_BUFFER_PCT  = 4;     // % de marge avant suppression définitive
-var GH_HIT_WINDOW       = 120;   // ms fenêtre de tolérance (±)
 var GH_SPEED_HIT        = -0.025;// -2.5% vitesse Handy par réussite
 var GH_SPEED_MISS       = 0.025; // +2.5% vitesse Handy par raté
 var GH_HIT_ZONE_Y_PCT   = 0.82;  // position zone de frappe (% hauteur écran)
@@ -39,6 +37,7 @@ async function startGuitarMode(){
   document.getElementById('ctrlTopBar').style.display='none';
   document.getElementById('ctrlBottomBar').style.display='none';
 
+  basicActive=false;
   ghActive=true; ghIsCtrl=true;
   ghSpeed=0.0; ghCombo=0; ghMiss=0;
   ghNoteSpeed=GH_NOTE_SPEED_MIN;
@@ -170,8 +169,8 @@ function ghRenderLoop(now){
     n.y+=ghNoteSpeed*dt;
     if(n.el) n.el.style.top=n.y+'%';
 
-    // Zone de frappe dépassée sans tap → miss
-    if(n.y>hitY+GH_HIT_WINDOW*ghNoteSpeed/1000+GH_MISS_BUFFER_PCT){
+    // Sortie complète de l'écran sans tap → miss
+    if(n.y>100){
       n.missed=true;
       toRemove.push(n);
       // Seulement côté passif le miss est comptabilisé
@@ -199,14 +198,14 @@ function ghPassiveTap(col,e){
   setTimeout(function(){colEl.classList.remove('gh-flash');},120);
 
   var hitY=GH_HIT_ZONE_Y_PCT*100;
-  var window_pct=GH_HIT_WINDOW*ghNoteSpeed/1000;
 
-  // Chercher la note la plus proche dans la bonne colonne
+  // Chercher la note la plus proche de la ligne de frappe, dans la zone autorisée (hitY → bas de l'écran)
   var best=null,bestDist=Infinity;
   ghNotes.forEach(function(n){
     if(n.col!==col||n.hit||n.missed)return;
+    if(n.y<hitY||n.y>100)return;
     var dist=Math.abs(n.y-hitY);
-    if(dist<window_pct&&dist<bestDist){best=n;bestDist=dist;}
+    if(dist<bestDist){best=n;bestDist=dist;}
   });
 
   if(best){
@@ -274,8 +273,17 @@ async function ghLaunchHamp(){
 }
 
 async function ghSetVelocity(v){
-  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
-  if(!ghHampRunning)return;
+  v=Math.round(v*100)/100;
+  if(v<=0){
+    if(ghHampRunning){
+      try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});}catch(e){}
+      ghHampRunning=false;
+      ghUpdateHud();
+    }
+    return;
+  }
+  if(!ghHampRunning){ghLaunchHamp();return;}
+  v=Math.max(0.05,Math.min(1,v));
   try{
     await fetch(V3+'/hamp/velocity',{
       method:'PUT',
@@ -287,7 +295,9 @@ async function ghSetVelocity(v){
 
 /* ── UI ── */
 function ghUpdateHud(){
-  document.getElementById('ghSpeed').textContent='Speed: '+Math.round(ghSpeed*100)+'%';
+  document.getElementById('ghSpeed').textContent=ghHampRunning
+    ? 'Speed: '+Math.round(ghSpeed*100)+'%'
+    : 'Speed: pause';
   document.getElementById('ghCombo').textContent='Combo: '+ghCombo;
   document.getElementById('ghMiss').textContent='Miss: '+ghMiss;
 }

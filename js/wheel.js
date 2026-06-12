@@ -37,6 +37,7 @@ function startWheelMode(){
   document.getElementById('ctrlTopBar').style.display='none';
   document.getElementById('ctrlBottomBar').style.display='none';
 
+  basicActive=false;
   wheelIsCtrl=true;
   wheelSetupPicks=[];
   renderWheelSetup();
@@ -229,8 +230,9 @@ function wheelHdrs(json){
 function wheelSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
 async function wheelEnsureHamp(v){
-  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
-  if(wheelHampRunning){await wheelSetVelocity(v);return;}
+  v=Math.round(v*100)/100;
+  if(v<=0||wheelHampRunning){await wheelSetVelocity(v);return;}
+  v=Math.max(0.05,Math.min(1,v));
   try{
     await fetch(V3+'/mode',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({mode:0})});
     await wheelSleep(400);
@@ -244,8 +246,17 @@ async function wheelEnsureHamp(v){
 }
 
 async function wheelSetVelocity(v){
-  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
+  v=Math.round(v*100)/100;
+  if(v<=0){
+    if(wheelHampRunning){
+      try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:wheelHdrs(false)});}catch(e){}
+      wheelHampRunning=false;
+      wheelUpdateHud();
+    }
+    return;
+  }
   if(!wheelHampRunning)return;
+  v=Math.max(0.05,Math.min(1,v));
   try{
     await fetch(V3+'/hamp/velocity',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({velocity:v})});
   }catch(e){console.error('Wheel velocity error:',e);}
@@ -294,7 +305,9 @@ function wheelPause(durationMs){
 }
 
 function wheelUpdateHud(){
-  document.getElementById('wheelSpeedLabel').textContent='Speed: '+Math.round(wheelSpeed*100)+'%';
+  document.getElementById('wheelSpeedLabel').textContent=wheelHampRunning
+    ? 'Speed: '+Math.round(wheelSpeed*100)+'%'
+    : 'Speed: pause';
 }
 
 /* ── Stop ── */

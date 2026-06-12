@@ -60,6 +60,16 @@
   will-change:top;
 }
 
+/* Zone autorisée pour le tap : de la ligne de frappe jusqu'en bas */
+#ghAllowedZone{
+  position:absolute;
+  left:0;right:0;bottom:0;
+  top:82%;
+  background:rgba(255,255,255,0.06);
+  pointer-events:none;
+  z-index:1;
+}
+
 /* Ligne de frappe visible côté passif */
 #ghHitLine{
   position:absolute;

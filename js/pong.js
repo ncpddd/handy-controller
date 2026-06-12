@@ -12,9 +12,9 @@ var RALLY_PADDLE_SIZES=[28,20,13]; // % largeur du terrain, index = niveau-1 (1=
 var RALLY_PADDLE_SIZE_MIN=1, RALLY_PADDLE_SIZE_MAX=3, RALLY_PADDLE_SIZE_DEFAULT=2;
 var RALLY_BAR_THICKNESS_PX=6;   // hauteur CSS de .rally-wall / .rally-paddle
 var RALLY_BALL_DIAMETER_PX=14;  // taille CSS de .rally-ball
-var RALLY_SPEED_HIT=-0.02;  // tous les RALLY_HIT_STREAK_FOR_BONUS murs touchés : -2%
-var RALLY_SPEED_MISS=0.03;  // laisser passer une balle : +3%
-var RALLY_HIT_STREAK_FOR_BONUS=5; // nombre de murs touchés requis avant d'appliquer le bonus -2%
+var RALLY_SPEED_HIT=-0.03;  // tous les RALLY_HIT_STREAK_FOR_BONUS murs touchés : -3%
+var RALLY_SPEED_MISS=0.04;  // laisser passer une balle : +4%
+var RALLY_HIT_STREAK_FOR_BONUS=3; // nombre de murs touchés requis avant d'appliquer le bonus -3%
 
 /* ── State ── */
 var rallyActive=false;
@@ -41,6 +41,7 @@ function startRallyMode(){
   document.getElementById('ctrlTopBar').style.display='none';
   document.getElementById('ctrlBottomBar').style.display='none';
 
+  basicActive=false;
   rallyIsCtrl=true; rallyActive=true;
   rallySpeed=0.0; rallyHampRunning=false;
   rallyHits=0; rallyMisses=0; rallyHitStreak=0;
@@ -122,8 +123,15 @@ async function rallyLaunchHamp(){
   }catch(e){console.error('Rally HAMP launch error:',e);}
 }
 async function rallySetVelocity(v){
-  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
+  v=Math.round(v*100)/100;
   if(!rallyHampRunning)return;
+  if(v<=0){
+    try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});}catch(e){}
+    rallyHampRunning=false;
+    rallyUpdateHud();
+    return;
+  }
+  v=Math.max(0.05,Math.min(1,v));
   try{
     await fetch(V3+'/hamp/velocity',{
       method:'PUT',

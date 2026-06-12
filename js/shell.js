@@ -32,6 +32,7 @@ function startShellMode(){
   document.getElementById('ctrlTopBar').style.display='none';
   document.getElementById('ctrlBottomBar').style.display='none';
 
+  basicActive=false;
   shellIsCtrl=true; shellActive=true;
   shellSpeed=0.0; shellStarted=false; shellHampRunning=false;
   shellRoundActive=false; shellGuessable=false;
@@ -267,8 +268,17 @@ async function shellLaunchHamp(){
 }
 
 async function shellSetVelocity(v){
-  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
-  if(!shellHampRunning)return;
+  v=Math.round(v*100)/100;
+  if(v<=0){
+    if(shellHampRunning){
+      try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});}catch(e){}
+      shellHampRunning=false;
+      shellUpdateHud();
+    }
+    return;
+  }
+  if(!shellHampRunning){shellLaunchHamp();return;}
+  v=Math.max(0.05,Math.min(1,v));
   try{
     await fetch(V3+'/hamp/velocity',{
       method:'PUT',
@@ -280,7 +290,7 @@ async function shellSetVelocity(v){
 
 /* ── UI ── */
 function shellUpdateHud(){
-  document.getElementById('shellSpeedLabel').textContent=shellStarted
+  document.getElementById('shellSpeedLabel').textContent=shellHampRunning
     ? 'Speed: '+Math.round(shellSpeed*100)+'%'
     : 'Speed: pause';
 }
