@@ -48,6 +48,8 @@ async function startGuitarMode(){
   document.getElementById('ghOverlay').classList.add('active');
   // Pad contrôleur visible uniquement ici
   document.getElementById('ghCtrlPad').style.display='flex';
+  // La zone grisée n'est utile que côté passif (guide de tap)
+  document.getElementById('ghAllowedZone').style.display='none';
   // Colonnes passif non-cliquables côté ctrl
   for(var i=0;i<4;i++){
     var col=document.getElementById('ghCol'+i);
@@ -75,6 +77,7 @@ function ghPassiveStart(){
 
   document.getElementById('ghOverlay').classList.add('active');
   document.getElementById('ghCtrlPad').style.display='none';
+  document.getElementById('ghAllowedZone').style.display='';
   // Colonnes cliquables
   for(var i=0;i<4;i++){
     document.getElementById('ghCol'+i).style.pointerEvents='all';

@@ -60,14 +60,13 @@
   will-change:top;
 }
 
-/* Zone autorisée pour le tap : de la ligne de frappe jusqu'en bas */
+/* Zone autorisée pour le tap : de la ligne de frappe jusqu'aux cercles de frappe (pas par-dessus) */
 #ghAllowedZone{
   position:absolute;
-  left:0;right:0;bottom:0;
-  top:82%;
+  left:0;right:0;
+  top:82%;bottom:136px;
   background:rgba(255,255,255,0.06);
   pointer-events:none;
-  z-index:1;
 }
 
 /* Ligne de frappe visible côté passif */

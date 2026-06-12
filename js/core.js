@@ -341,8 +341,8 @@ function initCtrlCanvas(){
   function ctrlRenderLoop(){
     if(!document.getElementById('control-mode').classList.contains('active'))return;
     ctx.clearRect(0,0,ctrlCW,ctrlCH);
-    // En mode TARGET, le canvas sert à spawner des cibles : pas de trail
-    if(gameMode){requestAnimationFrame(ctrlRenderLoop);return;}
+    // Hors mode BASIC, le canvas n'affiche pas le trail/curseur
+    if(!basicActive){requestAnimationFrame(ctrlRenderLoop);return;}
     // Dessiner le trail (même code que renderCanvas)
     if(trail.length>1){
       for(var k=1;k<trail.length;k++){
@@ -515,7 +515,7 @@ function handlePeerData(data){
     } else if(msg.type==='gh_hit'){
       // Côté contrôleur : passif a réussi → ralentir HAMP
       ghCombo++; ghMiss=ghMiss||0; ghUpdateHud();
-      ghCtrlApplyVelocity(msg.speed, false, msg.noteSpeed);
+      ghCtrlApplyVelocity(msg.speed, !ghStarted, msg.noteSpeed);
     } else if(msg.type==='gh_miss'){
       // Côté contrôleur : passif a raté → accélérer HAMP + réduire le délai entre notes
       ghCombo=0; ghMiss++; ghUpdateHud();
