@@ -3,8 +3,12 @@
 ════════════════════════════════════════════════════════ */
 
 /* ── Config ── */
-var GH_NOTE_SPEED_MIN   = 120;   // px/s vitesse défilement min
-var GH_NOTE_SPEED_MAX   = 400;   // px/s vitesse défilement max
+var GH_NOTE_SPEED_MIN   = 15;    // %hauteur/s vitesse défilement min
+var GH_NOTE_SPEED_MAX   = 50;    // %hauteur/s vitesse défilement max
+var GH_NOTE_SPEED_DECAY = 0.25;  // réduction par hit (%hauteur/s)
+var GH_NOTE_SPEED_GROWTH= 1;     // augmentation par miss (%hauteur/s)
+var GH_NOTE_SPAWN_Y     = -6;    // % position de spawn (au-dessus de l'écran)
+var GH_MISS_BUFFER_PCT  = 4;     // % de marge avant suppression définitive
 var GH_HIT_WINDOW       = 120;   // ms fenêtre de tolérance (±)
 var GH_SPEED_HIT        = -0.025;// -2.5% vitesse Handy par réussite
 var GH_SPEED_MISS       = 0.025; // +2.5% vitesse Handy par raté
@@ -20,7 +24,7 @@ var ghSpeed       = 0.0;    // vitesse Handy courante 0..1
 var ghStarted     = false;  // premier miss déclenche HAMP
 var ghCombo       = 0;
 var ghMiss        = 0;
-var ghNoteSpeed   = GH_NOTE_SPEED_MIN; // px/s actuel
+var ghNoteSpeed   = GH_NOTE_SPEED_MIN; // %hauteur/s actuel
 var ghNotes       = [];     // {id, col, el, spawnTime, y}
 var ghNoteIdCtr   = 0;
 var ghRafId       = null;
@@ -142,14 +146,14 @@ function ghSpawnNote(id,col){
   var el=document.createElement('div');
   el.className='gh-note';
   el.id='ghnote-'+id;
-  el.style.top='-28px';
+  el.style.top=GH_NOTE_SPAWN_Y+'%';
   el.style.left=leftPct+'%';
   el.style.transform='translateX(-50%)';
   el.style.background=color;
   el.style.boxShadow='0 0 14px '+color;
   track.appendChild(el);
 
-  ghNotes.push({id:id,col:col,el:el,y:-28,hit:false,missed:false});
+  ghNotes.push({id:id,col:col,el:el,y:GH_NOTE_SPAWN_Y,hit:false,missed:false});
 }
 
 /* ── Render loop : défilement des notes ── */
@@ -158,17 +162,16 @@ function ghRenderLoop(now){
   var dt=(now-(ghLastFrame||now))/1000;
   ghLastFrame=now;
 
-  var screenH=window.innerHeight;
-  var hitY=screenH*GH_HIT_ZONE_Y_PCT;
+  var hitY=GH_HIT_ZONE_Y_PCT*100;
   var toRemove=[];
 
   ghNotes.forEach(function(n){
     if(n.hit||n.missed)return;
     n.y+=ghNoteSpeed*dt;
-    if(n.el) n.el.style.top=n.y+'px';
+    if(n.el) n.el.style.top=n.y+'%';
 
     // Zone de frappe dépassée sans tap → miss
-    if(n.y>hitY+GH_HIT_WINDOW*ghNoteSpeed/1000+30){
+    if(n.y>hitY+GH_HIT_WINDOW*ghNoteSpeed/1000+GH_MISS_BUFFER_PCT){
       n.missed=true;
       toRemove.push(n);
       // Seulement côté passif le miss est comptabilisé
@@ -195,16 +198,15 @@ function ghPassiveTap(col,e){
   colEl.classList.add('gh-flash');
   setTimeout(function(){colEl.classList.remove('gh-flash');},120);
 
-  var screenH=window.innerHeight;
-  var hitY=screenH*GH_HIT_ZONE_Y_PCT;
-  var window_px=GH_HIT_WINDOW*ghNoteSpeed/1000;
+  var hitY=GH_HIT_ZONE_Y_PCT*100;
+  var window_pct=GH_HIT_WINDOW*ghNoteSpeed/1000;
 
   // Chercher la note la plus proche dans la bonne colonne
   var best=null,bestDist=Infinity;
   ghNotes.forEach(function(n){
     if(n.col!==col||n.hit||n.missed)return;
     var dist=Math.abs(n.y-hitY);
-    if(dist<window_px&&dist<bestDist){best=n;bestDist=dist;}
+    if(dist<window_pct&&dist<bestDist){best=n;bestDist=dist;}
   });
 
   if(best){
@@ -223,7 +225,7 @@ function ghPassiveTap(col,e){
 function ghOnHit(col){
   ghCombo++;
   ghSpeed=Math.max(0,Math.round((ghSpeed+GH_SPEED_HIT)*100)/100);
-  ghNoteSpeed=Math.max(GH_NOTE_SPEED_MIN,ghNoteSpeed-2);
+  ghNoteSpeed=Math.max(GH_NOTE_SPEED_MIN,ghNoteSpeed-GH_NOTE_SPEED_DECAY);
   ghUpdateHud();
   ghShowFeedback('NICE ×'+ghCombo,true);
   // Notifier le contrôleur → c'est lui qui applique la velocity HAMP
@@ -235,7 +237,7 @@ function ghOnHit(col){
 function ghOnMiss(col){
   ghCombo=0; ghMiss++;
   ghSpeed=Math.min(1,Math.round((ghSpeed+GH_SPEED_MISS)*100)/100);
-  ghNoteSpeed=Math.min(GH_NOTE_SPEED_MAX,ghNoteSpeed+8);
+  ghNoteSpeed=Math.min(GH_NOTE_SPEED_MAX,ghNoteSpeed+GH_NOTE_SPEED_GROWTH);
   ghUpdateHud();
   ghShowFeedback('MISS',false);
   // Notifier le contrôleur → c'est lui qui applique la velocity HAMP

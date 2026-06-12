@@ -1,8 +1,11 @@
 /* ── CONFIG ── */
 var V2='https://www.handyfeeling.com/api/handy/v2';
 var V3='https://www.handyfeeling.com/api/handy-rest/v3';
-var STROKE_MIN_DELTA=8,STROKE_DEADZONE=3;
 var MIN_DUR_MS=80,MAX_DUR_MS=800;
+var SAMPLE_INTERVAL_MS=50;        // cadence d'enregistrement des échantillons de position
+var SEGMENT_SAMPLES=2;            // nb d'échantillons par segment
+var SEGMENT_MS=SAMPLE_INTERVAL_MS*SEGMENT_SAMPLES; // 100ms : durée "réelle" d'un segment
+var STREAM_LOOKAHEAD_MIN=80,STREAM_LOOKAHEAD_MAX=400; // ms, anticipation bornée par le RTT mesuré
 
 /* ── STATE ── */
 var ck='',ak='',token='',useV3=false;
@@ -11,7 +14,9 @@ var drawing=false,lastY=null,lastT=null;
 var curPos=50,curVel=0,sen=1.5;
 var trail=[],TMAX=200;
 var sendInterval=null;
-var strokePoints=[],lastDir=0,strokeQueue=[],strokeRunning=false,lastCmdPos=50;
+var segmentSamples=[]; // {pos,t} échantillons du segment en cours d'enregistrement
+var xptBusy=false;     // une seule requête /hdsp/xpt en vol à la fois
+var rttEstimate=150;   // ms, moyenne mobile (EMA) du round-trip mesuré
 
 /* État partagé entre les modes de jeu */
 var gameDataConn=null;      // connexion PeerJS données vers le passif
@@ -47,8 +52,19 @@ async function call(path,method,body){
 }
 
 async function stopHandy(){
-  try{if(useV3)await call('/hdsp/xpt','PUT',{xp:curPos});else await call('/hamp/stop','PUT');}catch(e){}
+  try{
+    if(useV3)await call('/hdsp/xpt','PUT',{xp:curPos});
+    else await fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(100-curPos)/100})});
+  }catch(e){}
   var ms=document.getElementById('ms');if(ms)ms.textContent='idle';
+}
+
+/* ── Retour au menu de sélection de mode (BASIC) ── */
+function backToModeSelect(){
+  stopHandy();
+  document.getElementById('ctrlTopBar').style.display='none';
+  document.getElementById('ctrlBottomBar').style.display='none';
+  document.getElementById('gameModeSelect').classList.add('active');
 }
 
 /* ── CONTROL CANVAS ── */
@@ -57,63 +73,54 @@ function yToPos(y,h){return Math.round(100-(cl(y,0,h)/h)*100);}
 
 function startSendLoop(){
   if(sendInterval)return;
-  sendInterval=setInterval(function(){if(drawing)sendCmd(curPos,curVel);},100);
+  segmentSamples=[];
+  sendInterval=setInterval(function(){if(drawing)recordSample();},SAMPLE_INTERVAL_MS);
 }
 function stopSendLoop(){if(sendInterval){clearInterval(sendInterval);sendInterval=null;}}
 
-/* ── STROKE ENGINE ── */
-function addStrokePoint(pos){
-  if(!ck)return;
+/* ── SEGMENT STREAMING ENGINE ── */
+function recordSample(){
   var now=performance.now();
-  strokePoints.push({pos:pos,t:now});
-  if(strokePoints.length>20)strokePoints.shift();
-  if(strokePoints.length<2)return;
-  var prev=strokePoints[strokePoints.length-2];
-  var cur=strokePoints[strokePoints.length-1];
-  var delta=cur.pos-prev.pos;
-  if(Math.abs(delta)<STROKE_DEADZONE)return;
-  var newDir=delta>0?1:-1;
-  if(lastDir!==0&&newDir!==lastDir){
-    var peakPt=strokePoints[strokePoints.length-2];
-    var startPt=findLastInversion();
-    if(startPt){
-      var sd=Math.abs(peakPt.pos-startPt.pos);
-      if(sd>=STROKE_MIN_DELTA){
-        var dur=Math.max(MIN_DUR_MS,Math.min(MAX_DUR_MS,Math.round(peakPt.t-startPt.t)));
-        enqueueStroke(peakPt.pos,dur);
-      }
-    }
+  segmentSamples.push({pos:curPos,t:now});
+  if(segmentSamples.length>=SEGMENT_SAMPLES){
+    var closed=segmentSamples;
+    // le dernier point du segment fermé devient le 1er point du suivant (continuité)
+    segmentSamples=[closed[closed.length-1]];
+    playSegment(closed);
   }
-  lastDir=newDir;
 }
 
-function findLastInversion(){
-  for(var i=strokePoints.length-3;i>=0;i--){
-    var d=strokePoints[i+1].pos-strokePoints[i].pos;
-    if(Math.abs(d)>=STROKE_DEADZONE){var dir=d>0?1:-1;if(dir!==lastDir)return strokePoints[i];}
-  }
-  return strokePoints[0]||null;
+async function playSegment(samples){
+  if(!ck)return;
+  if(xptBusy)return; // requête précédente encore en vol : on saute ce segment, le suivant rattrapera
+
+  var n=samples.length;
+  var t0=samples[0].t;
+  var sumT=0,sumP=0,sumTT=0,sumTP=0;
+  samples.forEach(function(s){
+    var t=s.t-t0;
+    sumT+=t;sumP+=s.pos;sumTT+=t*t;sumTP+=t*s.pos;
+  });
+  var denom=n*sumTT-sumT*sumT;
+  var slope=denom!==0?(n*sumTP-sumT*sumP)/denom:0; // %/ms
+  var intercept=(sumP-slope*sumT)/n;
+  var tEnd=samples[n-1].t-t0;
+  var posAtEnd=cl(slope*tEnd+intercept,0,100);
+
+  var lookahead=cl(rttEstimate,STREAM_LOOKAHEAD_MIN,STREAM_LOOKAHEAD_MAX);
+  var target=cl(Math.round(posAtEnd+slope*lookahead),0,100);
+  var duration=cl(Math.round(SEGMENT_MS+rttEstimate),MIN_DUR_MS,MAX_DUR_MS);
+
+  xptBusy=true;
+  var sentAt=performance.now();
+  try{
+    var r=await fetch(V2+'/hdsp/xpt',{method:'PUT',
+      headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:duration,position:(100-target)/100})});
+    if(r.ok)rttEstimate=Math.round(rttEstimate*0.7+(performance.now()-sentAt)*0.3);
+  }catch(e){console.warn('xpt error:',e);}
+  finally{xptBusy=false;}
 }
-
-function enqueueStroke(pos,dur){strokeQueue.push({pos:pos,dur:dur});if(!strokeRunning)runStrokeQueue();}
-
-async function runStrokeQueue(){
-  if(strokeRunning)return;strokeRunning=true;
-  while(strokeQueue.length>0){
-    var stroke=strokeQueue.shift();
-    var started=performance.now();
-    try{
-      var url=V2+'/hdsp/xpt';
-      fetch(url,{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
-        body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:stroke.dur,position:(100-stroke.pos)/100})});
-    }catch(e){}
-    var elapsed=performance.now()-started;
-    await new Promise(function(r){setTimeout(r,Math.max(20,stroke.dur-elapsed+20));});
-  }
-  strokeRunning=false;
-}
-
-async function sendCmd(pos,vel){if(!ck)return;addStrokePoint(pos);}
 
 /* ── RENDER CONTROL CANVAS ── */
 function velToRGB(vel){
@@ -364,6 +371,7 @@ function initCtrlCanvas(){
     drawing=true;
     var y=e.clientY;
     lastY=y;lastT=performance.now();
+    segmentSamples=[];
     var p=yToPos(y,ctrlCH);
     trail=[{x:ctrlCW/2,y:cl(y,0,ctrlCH),p:p,v:0}];
     curPos=p;
@@ -380,6 +388,7 @@ function initCtrlCanvas(){
     drawing=true;
     var y=e.touches[0].clientY;
     lastY=y;lastT=performance.now();
+    segmentSamples=[];
     var p=yToPos(y,ctrlCH);
     trail=[{x:ctrlCW/2,y:cl(y,0,ctrlCH),p:p,v:0}];
     curPos=p;
@@ -414,6 +423,12 @@ function ctrlOnEnd(){
   if(!drawing)return;
   drawing=false;stopSendLoop();
   lastY=null;lastT=null;
+  segmentSamples=[];
+  // Commande finale sans anticipation : se poser exactement à la position relâchée
+  if(ck){
+    fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(100-curPos)/100})}).catch(function(){});
+  }
 }
 
 function exitControlMode(){
@@ -454,6 +469,14 @@ function resetAllGames(){
   shellActive=false;shellRoundActive=false;shellGuessable=false;
   document.getElementById('shellOverlay').classList.remove('active');
   document.getElementById('shellHud').classList.remove('show');
+
+  // Rally (1 vs mur)
+  rallyActive=false;
+  if(rallyRafId){cancelAnimationFrame(rallyRafId);rallyRafId=null;}
+  document.getElementById('rallyOverlay').classList.remove('active');
+  document.getElementById('rallyHud').classList.remove('show');
+  document.getElementById('rallyArea').innerHTML='';
+  rallyBalls=[];
 }
 
 /* ── PEER DATA MESSAGES ── */
@@ -517,6 +540,21 @@ function handlePeerData(data){
       // Côté passif : le contrôleur a arrêté le Shell Game
       shellActive=false;shellRoundActive=false;shellGuessable=false;
       document.getElementById('shellOverlay').classList.remove('active');
+    } else if(msg.type==='rally_init'){
+      // Côté passif : le contrôleur a lancé le mode RALLY
+      rallyPassiveStart({ballCount:msg.ballCount,ballSpeedLevel:msg.ballSpeedLevel,paddleSizeLevel:msg.paddleSizeLevel});
+    } else if(msg.type==='rally_config'){
+      // Côté passif : le contrôleur a changé la config en direct
+      rallyApplyConfig({ballCount:msg.ballCount,ballSpeedLevel:msg.ballSpeedLevel,paddleSizeLevel:msg.paddleSizeLevel});
+    } else if(msg.type==='rally_event'){
+      // Côté contrôleur : le passif a touché le mur ou raté une balle
+      rallyApplyResult(msg.event);
+    } else if(msg.type==='rally_state'){
+      // Côté contrôleur : état de la partie (balles, raquette) envoyé par le passif
+      rallyApplyState(msg);
+    } else if(msg.type==='rally_stop'){
+      // Côté passif : le contrôleur a arrêté le mode RALLY
+      rallyPassiveStop();
     }
   }catch(e){console.error('handlePeerData error:',e,data);}
 }

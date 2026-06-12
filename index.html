@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/guitar.css"/>
   <link rel="stylesheet" href="css/wheel.css"/>
   <link rel="stylesheet" href="css/shell.css"/>
+  <link rel="stylesheet" href="css/pong.css"/>
 </head>
 <body>
 
@@ -50,24 +51,20 @@
   <canvas id="ctrlCanvas"></canvas>
   <!-- Cursor dot -->
   <div id="cursorDot"></div>
-  <!-- Horizontal position line -->
-  <div id="posIndicator">
-    <div id="posLine"></div>
-    <div id="posValue">50%</div>
-  </div>
   <!-- Top bar -->
   <div id="ctrlTopBar">
     <div style="display:flex;gap:8px">
       <span class="ctrl-pill" id="ctrlModePill">HAMP</span>
       <span class="ctrl-pill" id="ctrlRoomPill"></span>
     </div>
-    <button class="btn btn-d" style="height:32px;font-size:12px" onclick="exitControlMode()">✕ Exit</button>
+    <button class="btn btn-d" style="height:32px;font-size:12px" onclick="backToModeSelect()">✕ Exit</button>
   </div>
   <!-- Bottom bar -->
   <div id="ctrlBottomBar">
     <div id="ctrlPosDisplay">—<span>%</span></div>
     <div id="ctrlWaiting">Touch anywhere to control</div>
     <button class="btn btn-d" style="height:36px;font-size:12px;pointer-events:all" onclick="stopHandy()">■ Stop</button>
+    <button class="btn btn-g" style="height:36px;font-size:12px;pointer-events:all" onclick="backToModeSelect()">🏠 Menu</button>
   </div>
   <!-- Mode selector (shown after connection) -->
   <div id="gameModeSelect">
@@ -103,6 +100,11 @@
         <div class="mc-icon">🐚</div>
         <div class="mc-title">SHELL GAME</div>
         <div class="mc-desc">3 cups, find the ball — wrong guess speeds up the Handy</div>
+      </div>
+      <div class="mode-card" onclick="startRallyMode()">
+        <div class="mc-icon">🧱</div>
+        <div class="mc-title">RALLY</div>
+        <div class="mc-desc">1 vs the wall — controller tunes ball speed, count and paddle size live</div>
       </div>
     </div>
   </div>
@@ -214,12 +216,12 @@
           <button onclick="shellAdjustSwapCount(1)">+</button>
         </div>
         <div class="shell-config-item">
-          <span>Vitesse</span>
+          <span>Speed</span>
           <button onclick="shellAdjustSwapSpeed(-1)">-</button>
           <span id="shellSwapSpeedVal">3</span>
           <button onclick="shellAdjustSwapSpeed(1)">+</button>
         </div>
-        <button id="shellPlayBtn" onclick="shellPlayRound()">▶ Jouer</button>
+        <button id="shellPlayBtn" onclick="shellPlayRound()">▶ Play</button>
       </div>
     </div>
     <div id="shellArea"></div>
@@ -227,10 +229,28 @@
     <div id="shellHint"></div>
   </div>
 
+  <!-- ── RALLY OVERLAY (body level, visible camera + control) ── -->
+  <div id="rallyOverlay">
+    <div id="rallyHud">
+      <div id="rallyHudBar">
+        <span id="rallySpeedLabel">Speed: pause</span>
+        <button class="btn-game-stop" onclick="stopRallyMode()">■ Stop</button>
+      </div>
+      <div id="rallyConfig">
+        <div class="rally-config-item"><span>Balls</span><button onclick="rallyAdjustBallCount(-1)">-</button><span id="rallyBallCountVal">1</span><button onclick="rallyAdjustBallCount(1)">+</button></div>
+        <div class="rally-config-item"><span>Speed</span><button onclick="rallyAdjustSpeed(-1)">-</button><span id="rallySpeedVal">3</span><button onclick="rallyAdjustSpeed(1)">+</button></div>
+        <div class="rally-config-item"><span>Paddle</span><button onclick="rallyAdjustPaddleSize(-1)">-</button><span id="rallyPaddleVal">2</span><button onclick="rallyAdjustPaddleSize(1)">+</button></div>
+      </div>
+      <div id="rallyStats"><span id="rallyHits">Wall: 0</span><span id="rallyMisses">Misses: 0</span></div>
+    </div>
+    <div id="rallyArea"></div>
+  </div>
+
 <script src="js/core.js"></script>
 <script src="js/target.js"></script>
 <script src="js/guitar.js"></script>
 <script src="js/wheel.js"></script>
 <script src="js/shell.js"></script>
+<script src="js/pong.js"></script>
 </body>
 </html>

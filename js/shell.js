@@ -4,9 +4,9 @@
 
 /* ── Config ── */
 var SHELL_SLOT_PCT=[20,50,80]; // position horizontale (%) des 3 emplacements
-var SHELL_SWAP_DURATIONS=[900,700,500,350,250]; // ms par échange, index = niveau-1
+var SHELL_SWAP_DURATIONS=[900,700,500,350,250,180,130,95,70,50]; // ms par échange, index = niveau-1
 var SHELL_SWAP_COUNT_MIN=4, SHELL_SWAP_COUNT_MAX=16, SHELL_SWAP_COUNT_DEFAULT=8;
-var SHELL_SWAP_SPEED_MIN=1, SHELL_SWAP_SPEED_MAX=5, SHELL_SWAP_SPEED_DEFAULT=3;
+var SHELL_SWAP_SPEED_MIN=1, SHELL_SWAP_SPEED_MAX=10, SHELL_SWAP_SPEED_DEFAULT=3;
 var SHELL_REVEAL_HOLD=900;   // ms d'affichage de la balle avant le mélange
 var SHELL_RESULT_HOLD=2000;  // ms d'affichage du résultat
 var SHELL_SPEED_CORRECT=-0.03; // -3% en cas de bonne réponse
@@ -42,7 +42,7 @@ function startShellMode(){
   buildShellCups();
   document.getElementById('shellOverlay').classList.add('active');
   document.getElementById('shellHud').classList.add('show');
-  document.getElementById('shellPlayBtn').textContent='▶ Jouer';
+  document.getElementById('shellPlayBtn').textContent='▶ Play';
   document.getElementById('shellPlayBtn').disabled=false;
   shellUpdateHud();
 
@@ -59,7 +59,7 @@ function shellPassiveStart(){
   buildShellCups();
   document.getElementById('shellOverlay').classList.add('active');
   document.getElementById('shellHud').classList.remove('show');
-  document.getElementById('shellHint').textContent='En attente du contrôleur…';
+  document.getElementById('shellHint').textContent='Waiting for controller…';
   document.getElementById('shellHint').classList.add('show');
 }
 
@@ -86,6 +86,7 @@ async function stopShellMode(){
 function buildShellCups(){
   shellCupSlot=[0,1,2];
   var area=document.getElementById('shellArea');
+  area.classList.remove('hidden');
   area.innerHTML='';
 
   var ball=document.createElement('div');
@@ -182,7 +183,7 @@ function shellRunSwaps(seq,idx,swapDur){
 function shellSwapsDone(){
   shellGuessable=true;
   if(!shellIsCtrl){
-    document.getElementById('shellHint').textContent='Tape sur le gobelet où tu penses que se trouve la balle';
+    document.getElementById('shellHint').textContent='Tap the cup where you think the ball is';
     document.getElementById('shellHint').classList.add('show');
   }
 }
@@ -213,16 +214,18 @@ function shellRevealResult(cupId,correct){
   if(cupId!==shellBallCup) ballCupEl.classList.add('correct');
 
   var resultEl=document.getElementById('shellResult');
-  resultEl.textContent=correct?'✅ Gagné !':'❌ Perdu !';
+  resultEl.textContent=correct?'✅ Won!':'❌ Lost!';
   resultEl.className='show '+(correct?'win':'lose');
 
   setTimeout(function(){
     shellRoundActive=false;
+    document.getElementById('shellArea').classList.add('hidden');
+    document.getElementById('shellResult').classList.remove('show','win','lose');
     if(shellIsCtrl){
       document.getElementById('shellPlayBtn').disabled=false;
-      document.getElementById('shellPlayBtn').textContent='🔁 Rejouer';
+      document.getElementById('shellPlayBtn').textContent='🔁 Replay';
     } else {
-      document.getElementById('shellHint').textContent='En attente du contrôleur…';
+      document.getElementById('shellHint').textContent='Waiting for controller…';
       document.getElementById('shellHint').classList.add('show');
     }
   },SHELL_RESULT_HOLD);

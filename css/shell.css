@@ -8,6 +8,9 @@
 }
 #shellOverlay.active{display:flex;}
 
+/* Entre deux manches : gobelets masqués pour laisser voir la caméra */
+#shellArea.hidden{display:none}
+
 /* HUD (contrôleur uniquement) */
 #shellHud{
   position:absolute;top:0;left:0;right:0;z-index:22;

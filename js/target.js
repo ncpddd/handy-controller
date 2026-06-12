@@ -16,6 +16,7 @@ var GAME_CIRCLE_SIZE        = 75;    // px diamètre
 /* State */
 var gameActive=false;
 var gameSpeed=GAME_CYCLE_SPEED_MIN;
+var gameHampRunning=false;  // le Handy démarre en pause, lancé au 1er événement (raté/touché)
 var gameMissed=0;
 var gameCircleDuration=GAME_CIRCLE_DURATION;
 var gameCircles=[];         // {id, x%, y%, startTime, duration, el, svgEl, interval}
@@ -42,6 +43,7 @@ async function startGameMode(){
 
   gameActive=true;gameMode=true;
   gameSpeed=GAME_CYCLE_SPEED_MIN;
+  gameHampRunning=false;
   gameMissed=0;
   gameCircleDuration=GAME_CIRCLE_DURATION;
   gameCircles=[];
@@ -52,44 +54,38 @@ async function startGameMode(){
     gameDataConn.send(JSON.stringify({type:'game_start'}));
   }
 
-  // velocity initiale doit etre > 0 sinon HAMP reste immobile
-  var initialVelocity=GAME_CYCLE_SPEED_MIN;
-
-  // Demarrer HAMP : mode 0 -> mode 2 -> /hamp/start -> /hamp/velocity
-  try{
-    var r0=await fetch(V3+'/mode',{
-      method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({mode:0})
-    });
-    console.log('mode 0:',await r0.json());
-    await new Promise(function(r){setTimeout(r,500);});
-
-    var r2=await fetch(V3+'/mode',{
-      method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({mode:2})
-    });
-    console.log('mode 2:',await r2.json());
-    await new Promise(function(r){setTimeout(r,500);});
-
-    var rs=await fetch(V3+'/hamp/start',{
-      method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}
-    });
-    console.log('start:',await rs.json());
-    await new Promise(function(r){setTimeout(r,300);});
-
-    var rv=await fetch(V3+'/hamp/velocity',{
-      method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({velocity:initialVelocity})
-    });
-    console.log('velocity:',await rv.json());
-    gameSpeed=initialVelocity;
-    updateGameHud();
-  }catch(e){console.error('HAMP start error:',e);}
+  // Le Handy démarre en pause, lancé au premier raté/touché (cf shellLaunchHamp)
 
   // Touch/click sur le canvas = spawner un cercle
   var c=document.getElementById('ctrlCanvas');
   c.addEventListener('click',onGameControllerClick);
   c.addEventListener('touchend',onGameControllerTouch);
+}
+
+/* ── HAMP ── */
+async function gameLaunchHamp(){
+  try{
+    await fetch(V3+'/mode',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({mode:0})});
+    await new Promise(function(r){setTimeout(r,400);});
+    await fetch(V3+'/mode',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({mode:2})});
+    await new Promise(function(r){setTimeout(r,400);});
+    await fetch(V3+'/hamp/start',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});
+    await new Promise(function(r){setTimeout(r,250);});
+    gameHampRunning=true;
+    gameSetVelocity(gameSpeed);
+  }catch(e){console.error('Game HAMP launch error:',e);}
+}
+
+async function gameSetVelocity(v){
+  v=Math.max(0.05,Math.min(1,Math.round(v*100)/100));
+  if(!gameHampRunning)return;
+  try{
+    await fetch(V3+'/hamp/velocity',{
+      method:'PUT',
+      headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({velocity:v})
+    });
+  }catch(e){console.error('Game velocity error:',e);}
 }
 
 function onGameControllerClick(e){
@@ -161,11 +157,9 @@ function onCircleMissed(id){
   // Réduire le temps
   gameCircleDuration=Math.max(GAME_CIRCLE_DURATION_MIN,gameCircleDuration-GAME_CIRCLE_DURATION_DECAY);
   updateGameHud();
-  // Mettre à jour la vitesse HAMP
-  fetch(V3+'/hamp/velocity',{
-      method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({velocity:gameSpeed})
-  }).catch(function(){});
+  // Le Handy était en pause : le premier raté le lance
+  if(!gameHampRunning) gameLaunchHamp();
+  else gameSetVelocity(gameSpeed);
 }
 
 function onCircleHit(id){
@@ -178,7 +172,7 @@ function onCircleHit(id){
   // Récompense : -2% vitesse (sans toucher au timer des cercles)
   gameSpeed=Math.round(Math.max(0,gameSpeed-0.02)*100)/100;
   updateGameHud();
-  if(hampRunning) setHampVelocity(gameSpeed);
+  if(gameHampRunning) gameSetVelocity(gameSpeed);
   // Notifier le passif
   if(gameDataConn&&gameDataConn.open){
     gameDataConn.send(JSON.stringify({type:'circle_hit',id:id}));
@@ -186,7 +180,9 @@ function onCircleHit(id){
 }
 
 function updateGameHud(){
-  document.getElementById('gameSpeed').textContent='Speed: '+Math.round(gameSpeed*100)+'%';
+  document.getElementById('gameSpeed').textContent=gameHampRunning
+    ? 'Speed: '+Math.round(gameSpeed*100)+'%'
+    : 'Speed: pause';
   document.getElementById('gameMissed').textContent='Missed: '+gameMissed+' · Next: '+gameCircleDuration.toFixed(1)+'s';
 }
 
@@ -206,11 +202,10 @@ async function stopGameMode(){
     gameDataConn.send(JSON.stringify({type:'game_stop'}));
   }
   // Stopper HAMP
-  try{
-    await fetch(V2+'/hamp/stop',{
-      method:'PUT',headers:{'X-Connection-Key':ck}
-    });
-  }catch(e){}
+  if(gameHampRunning){
+    try{await fetch(V3+'/hamp/stop',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});}catch(e){}
+    gameHampRunning=false;
+  }
   // Retour au selecteur
   document.getElementById('gameModeSelect').classList.add('active');
 }
