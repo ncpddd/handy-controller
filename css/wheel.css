@@ -42,52 +42,49 @@
 }
 #wheelOverlay.active{display:flex;}
 
-/* Clignotement des bords pendant un effet temporaire (max/slow/pause) */
+/* Bords colorés (fixes, sans clignotement) pendant un effet temporaire (max/slow/pause/...) */
 #wheelEdgeFlash{
   position:fixed;inset:0;z-index:21;
   pointer-events:none;
   border:8px solid transparent;
   box-sizing:border-box;
   opacity:0;
+  transition:opacity .3s;
 }
 #wheelEdgeFlash.flash-red{
+  opacity:1;
   border-color:var(--danger);
   box-shadow:inset 0 0 30px var(--danger), 0 0 30px var(--danger);
-  animation:wheelEdgeBlink .2s infinite steps(1);
 }
 #wheelEdgeFlash.flash-yellow{
+  opacity:1;
   border-color:#ffcc00;
   box-shadow:inset 0 0 30px #ffcc00, 0 0 30px #ffcc00;
-  animation:wheelEdgeBlink .6s infinite steps(1);
 }
 #wheelEdgeFlash.flash-green{
+  opacity:1;
   border-color:#4dff91;
   box-shadow:inset 0 0 30px #4dff91, 0 0 30px #4dff91;
-  animation:wheelEdgeBlink 1.2s infinite steps(1);
 }
 #wheelEdgeFlash.flash-pink{
+  opacity:1;
   border-color:#ff66cc;
   box-shadow:inset 0 0 30px #ff66cc, 0 0 30px #ff66cc;
-  animation:wheelEdgeBlink .5s infinite steps(1);
 }
 #wheelEdgeFlash.flash-purple{
+  opacity:1;
   border-color:#9966ff;
   box-shadow:inset 0 0 30px #9966ff, 0 0 30px #9966ff;
-  animation:wheelEdgeBlink .12s infinite steps(1);
 }
 #wheelEdgeFlash.flash-blue{
+  opacity:1;
   border-color:#00d4ff;
   box-shadow:inset 0 0 30px #00d4ff, 0 0 30px #00d4ff;
-  animation:wheelEdgeBlink 1.6s infinite steps(1);
 }
 #wheelEdgeFlash.flash-orange{
+  opacity:1;
   border-color:#ff9966;
   box-shadow:inset 0 0 30px #ff9966, 0 0 30px #ff9966;
-  animation:wheelEdgeBlink .4s infinite steps(1);
-}
-@keyframes wheelEdgeBlink{
-  0%,49%{opacity:1;}
-  50%,100%{opacity:0;}
 }
 
 #wheelArea{

@@ -383,7 +383,7 @@ function wheelChaos(durationMs){
 
 // Restreint l'amplitude de course du Handy à [min,max] (%) pendant durationMs, vitesse inchangée
 function wheelSetRange(min,max){
-  fetch(V3+'/hamp/stroke/zone',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({min:min,max:max})}).catch(function(){});
+  fetch(V3+'/hamp/stroke',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({min:min/100,max:max/100})}).catch(function(){});
 }
 function wheelTempRange(min,max,durationMs){
   wheelSetRange(min,max);
