@@ -241,6 +241,7 @@ async function wheelEnsureHamp(v){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:wheelHdrs(false)});
     await wheelSleep(250);
     wheelHampRunning=true;
+    wheelUpdateHud();
     await wheelSetVelocity(v);
   }catch(e){console.error('Wheel HAMP launch error:',e);}
 }

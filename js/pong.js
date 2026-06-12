@@ -119,6 +119,7 @@ async function rallyLaunchHamp(){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});
     await new Promise(function(r){setTimeout(r,250);});
     rallyHampRunning=true;
+    rallyUpdateHud();
     rallySetVelocity(rallySpeed);
   }catch(e){console.error('Rally HAMP launch error:',e);}
 }

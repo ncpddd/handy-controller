@@ -74,6 +74,7 @@ async function gameLaunchHamp(){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});
     await new Promise(function(r){setTimeout(r,250);});
     gameHampRunning=true;
+    updateGameHud();
     gameSetVelocity(gameSpeed);
   }catch(e){console.error('Game HAMP launch error:',e);}
 }

@@ -268,6 +268,7 @@ async function ghLaunchHamp(){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});
     await new Promise(function(r){setTimeout(r,250);});
     ghHampRunning=true;
+    ghUpdateHud();
     ghSetVelocity(ghSpeed);
   }catch(e){console.error('GH HAMP launch error:',e);}
 }

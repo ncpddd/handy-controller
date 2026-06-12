@@ -263,6 +263,7 @@ async function shellLaunchHamp(){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token}});
     await new Promise(function(r){setTimeout(r,250);});
     shellHampRunning=true;
+    shellUpdateHud();
     shellSetVelocity(shellSpeed);
   }catch(e){console.error('Shell HAMP launch error:',e);}
 }
