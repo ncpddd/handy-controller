@@ -1,0 +1,126 @@
+/* ══════════════════════════════════════════
+   CONTROL DECK MODE
+══════════════════════════════════════════ */
+
+#cdOverlay{
+  position:fixed;inset:0;z-index:20;display:none;
+  pointer-events:all;background:transparent;
+}
+#cdOverlay.active{display:block}
+
+/* HUD (haut, contrôleur uniquement) */
+#cdHud{
+  position:absolute;top:0;left:0;right:0;z-index:22;
+  display:none;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.8),transparent);
+  pointer-events:none;
+}
+#cdHud.show{display:flex}
+#cdHud span{font-family:var(--fm);font-size:12px;color:var(--accent)}
+#cdHud button{pointer-events:all}
+#cdHudBtns{display:flex;gap:8px}
+
+/* ── Panneau de contrôle (bas, contrôleur uniquement) ── */
+#cdControls{
+  position:absolute;bottom:0;left:0;right:0;z-index:22;
+  display:none;flex-direction:column;
+  padding:18px 100px 30px 22px;
+  background:linear-gradient(to top,rgba(0,0,0,0.85),transparent);
+  pointer-events:all;
+}
+#cdOverlay.is-ctrl #cdControls{display:flex}
+
+.cd-section-label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--fm);font-size:12px;color:var(--muted);margin-bottom:8px;
+}
+#cdSpeedValue{color:var(--accent);font-weight:700}
+
+/* Slider simple (vitesse) avec remplissage */
+.cd-slider-track{position:relative;height:36px;width:100%}
+.cd-slider-track::before{
+  content:'';position:absolute;left:0;right:0;top:50%;height:4px;
+  transform:translateY(-50%);background:var(--surface2);border-radius:2px;
+}
+.cd-slider-fill{
+  position:absolute;left:0;top:50%;height:4px;transform:translateY(-50%);
+  background:var(--accent);border-radius:2px;pointer-events:none;
+}
+.cd-slider-track input[type=range]{
+  position:absolute;left:0;top:0;width:100%;height:36px;margin:0;
+  background:transparent;appearance:none;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.cd-slider-track input[type=range]::-webkit-slider-runnable-track{background:transparent}
+.cd-slider-track input[type=range]::-moz-range-track{background:transparent}
+.cd-slider-track input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--bg);cursor:pointer;
+  box-shadow:0 0 10px rgba(200,255,0,0.45);
+}
+.cd-slider-track input[type=range]::-moz-range-thumb{
+  width:24px;height:24px;border-radius:50%;background:var(--accent);
+  border:2px solid var(--bg);cursor:pointer;box-shadow:0 0 10px rgba(200,255,0,0.45);
+}
+
+/* ── Plage min/max verticale (droite, contrôleur uniquement) ── */
+#cdRangePanel{
+  position:absolute;top:64px;bottom:130px;right:14px;z-index:22;
+  display:none;flex-direction:column;align-items:center;justify-content:space-between;
+  gap:10px;pointer-events:all;
+}
+#cdOverlay.is-ctrl #cdRangePanel{display:flex}
+#cdRangePanel span{
+  font-family:var(--fm);font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;
+}
+
+.range-slider-v{position:relative;width:40px;flex:1;min-height:80px}
+.range-slider-v .range-track-v{
+  position:absolute;left:50%;top:0;bottom:0;width:4px;
+  transform:translateX(-50%);background:var(--surface2);border-radius:2px;
+}
+.range-slider-v .range-fill-v{
+  position:absolute;left:50%;width:4px;transform:translateX(-50%);
+  background:var(--accent);border-radius:2px;pointer-events:none;
+}
+.range-slider-v input[type=range]{
+  writing-mode:vertical-lr;direction:rtl;
+  position:absolute;left:0;top:0;width:40px;height:100%;margin:0;
+  background:transparent;appearance:none;pointer-events:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.range-slider-v input[type=range]::-webkit-slider-runnable-track{background:transparent}
+.range-slider-v input[type=range]::-moz-range-track{background:transparent}
+.range-slider-v input[type=range]::-webkit-slider-thumb{
+  pointer-events:all;-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--bg);cursor:pointer;
+  box-shadow:0 0 10px rgba(200,255,0,0.45);
+}
+.range-slider-v input[type=range]::-moz-range-thumb{
+  pointer-events:all;width:24px;height:24px;border-radius:50%;background:var(--accent);
+  border:2px solid var(--bg);cursor:pointer;box-shadow:0 0 10px rgba(200,255,0,0.45);
+}
+
+/* ── Jauge (passif) ── */
+#cdGaugeWrap{
+  position:absolute;inset:0;display:none;
+  align-items:center;justify-content:center;
+}
+#cdOverlay.active:not(.is-ctrl) #cdGaugeWrap{display:flex}
+#cdGauge{
+  position:relative;width:48px;height:50vh;max-height:380px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:24px;
+  overflow:hidden;
+}
+#cdGaugeZone{
+  position:absolute;left:0;right:0;
+  background:var(--accent-d);
+  border-top:2px solid var(--accent);border-bottom:2px solid var(--accent);
+}
+#cdGaugeMarker{
+  position:absolute;left:50%;bottom:50%;width:32px;height:32px;border-radius:50%;
+  background:var(--accent);transform:translate(-50%,50%);
+  box-shadow:0 0 16px rgba(200,255,0,0.5);
+  transition:bottom .05s linear;
+}

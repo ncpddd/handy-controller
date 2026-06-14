@@ -136,6 +136,8 @@ function velToRGB(vel){
 ════════════════════════════════════════════════════════ */
 var camPeer=null,camConn=null,camRoomCode='';
 var camVideoHidden=true; // côté passif : cache/révèle le flux vidéo des deux côtés (caché par défaut)
+var camFovShown=false; // côté passif : afficher le cadre représentant ce que voit le contrôleur
+var ctrlViewport=null; // côté passif : {w,h} de l'écran du contrôleur, reçu via data channel
 
 function generateRoomCode(){
   var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -216,6 +218,45 @@ function camToggleVideoVisibility(){
   if(camConn&&camConn.open){
     camConn.send(JSON.stringify({type:'cam_visibility',hidden:camVideoHidden}));
   }
+}
+
+/* ── Cadre "ce que voit le contrôleur" (passif) ── */
+function camToggleFov(){
+  camFovShown=!camFovShown;
+  document.getElementById('camFovBtn').classList.toggle('active',camFovShown);
+  camUpdateFovOverlay();
+}
+
+// Calcule le rectangle (en pixels écran passif) correspondant à la portion de la vidéo
+// visible sur l'écran du contrôleur, en tenant compte de object-fit:cover des deux côtés.
+function camUpdateFovOverlay(){
+  var overlay=document.getElementById('camFovOverlay');
+  if(!camFovShown||!ctrlViewport){overlay.style.display='none';return;}
+  var video=document.getElementById('camVideo');
+  var vw=video.videoWidth,vh=video.videoHeight;
+  if(!vw||!vh){overlay.style.display='none';return;}
+  var pw=window.innerWidth,ph=window.innerHeight;
+
+  function visibleRect(w,h){
+    var viewAR=w/h,videoAR=vw/vh;
+    if(viewAR>videoAR){
+      var visH=vw/viewAR;
+      return {x:0,y:(vh-visH)/2,w:vw,h:visH};
+    } else {
+      var visW=vh*viewAR;
+      return {x:(vw-visW)/2,y:0,w:visW,h:vh};
+    }
+  }
+
+  var passiveRect=visibleRect(pw,ph);
+  var ctrlRect=visibleRect(ctrlViewport.w,ctrlViewport.h);
+  var scale=pw/passiveRect.w;
+
+  overlay.style.display='block';
+  overlay.style.left=((ctrlRect.x-passiveRect.x)*scale)+'px';
+  overlay.style.top=((ctrlRect.y-passiveRect.y)*scale)+'px';
+  overlay.style.width=(ctrlRect.w*scale)+'px';
+  overlay.style.height=(ctrlRect.h*scale)+'px';
 }
 
 function camToggleLinkForm(){
@@ -309,6 +350,7 @@ async function initControlMode(roomCode){
         dc.on('open',function(){
           gameDataConn=dc;
           console.log('Data channel open → gameDataConn ready');
+          dc.send(JSON.stringify({type:'ctrl_viewport',w:window.innerWidth,h:window.innerHeight}));
         });
         dc.on('data',function(data){
           handlePeerData(data);
@@ -468,6 +510,12 @@ function resetAllGames(){
   document.getElementById('camHideOverlay').classList.add('show');
   document.getElementById('camVisibilityBtn').textContent='🙈';
 
+  // Cadre "ce que voit le contrôleur"
+  camFovShown=false;
+  ctrlViewport=null;
+  document.getElementById('camFovOverlay').style.display='none';
+  document.getElementById('camFovBtn').classList.remove('active');
+
   // Target
   passiveMode=false;
   var passiveOverlay=document.getElementById('passiveGameOverlay');
@@ -504,6 +552,35 @@ function resetAllGames(){
   document.getElementById('rallyHud').classList.remove('show');
   document.getElementById('rallyArea').innerHTML='';
   rallyBalls=[];
+
+  // Control Deck
+  cdActive=false;cdHampRunning=false;cdLaunching=false;
+  if(cdVelocityThrottle){clearTimeout(cdVelocityThrottle);cdVelocityThrottle=null;}
+  if(cdRangeThrottle){clearTimeout(cdRangeThrottle);cdRangeThrottle=null;}
+  cdStopMarkerLoop();
+  document.getElementById('cdOverlay').classList.remove('active','is-ctrl');
+  document.getElementById('cdHud').classList.remove('show');
+
+  // Auto-Pilot
+  apActive=false;apPlaying=false;apLaunching=false;
+  if(apLabelTimer){clearInterval(apLabelTimer);apLabelTimer=null;}
+  document.getElementById('apOverlay').classList.remove('active','is-ctrl');
+  document.getElementById('apHud').classList.remove('show');
+  document.getElementById('apSetup').classList.remove('active');
+
+  // Dessin
+  dessinActive=false;dessinPlaying=false;dessinLaunching=false;
+  if(dessinRaf){cancelAnimationFrame(dessinRaf);dessinRaf=null;}
+  if(dessinLabelTimer){clearInterval(dessinLabelTimer);dessinLabelTimer=null;}
+  document.getElementById('dessinOverlay').classList.remove('active','is-ctrl');
+  document.getElementById('dessinHud').classList.remove('show');
+  document.getElementById('dessinSetup').classList.remove('active');
+
+  // Hold
+  holdActive=false;holdHolding=false;holdHampRunning=false;holdLaunching=false;
+  if(holdTickTimer){clearInterval(holdTickTimer);holdTickTimer=null;}
+  document.getElementById('holdOverlay').classList.remove('active','is-ctrl');
+  document.getElementById('holdHud').classList.remove('show');
 
   // Passive speed HUD (commun à tous les modes)
   document.getElementById('passiveSpeedHud').classList.remove('show');
@@ -588,13 +665,60 @@ function handlePeerData(data){
     } else if(msg.type==='rally_stop'){
       // Côté passif : le contrôleur a arrêté le mode RALLY
       rallyPassiveStop();
+    } else if(msg.type==='cd_init'){
+      // Côté passif : le contrôleur a lancé le mode CONTROL DECK
+      cdPassiveStart({speedPct:msg.speedPct,rangeMin:msg.rangeMin,rangeMax:msg.rangeMax,running:msg.running});
+    } else if(msg.type==='cd_update'){
+      // Côté passif : nouvelles valeurs de vitesse/plage du CONTROL DECK
+      cdApplyUpdate(msg);
+    } else if(msg.type==='cd_stop'){
+      // Côté passif : le contrôleur a arrêté le mode CONTROL DECK
+      cdActive=false;
+      cdStopMarkerLoop();
+      document.getElementById('cdOverlay').classList.remove('active','is-ctrl');
+      document.getElementById('passiveSpeedHud').classList.remove('show');
+    } else if(msg.type==='ap_init'){
+      // Côté passif : le contrôleur a (re)lancé/changé le preset AUTO-PILOT
+      if(apActive)apApplyPreset(msg.presetId,msg.startTime);
+      else apPassiveStart(msg);
+    } else if(msg.type==='ap_stop'){
+      // Côté passif : le contrôleur a arrêté le mode AUTO-PILOT
+      apActive=false;
+      document.getElementById('apOverlay').classList.remove('active','is-ctrl');
+      document.getElementById('passiveSpeedHud').classList.remove('show');
+    } else if(msg.type==='dessin_init'){
+      // Côté passif : le contrôleur a (re)lancé une courbe DESSIN
+      if(dessinActive)dessinApplyCurve(msg.points,msg.startTime,msg.periodMs);
+      else dessinPassiveStart(msg);
+    } else if(msg.type==='dessin_stop'){
+      // Côté passif : le contrôleur a arrêté le mode DESSIN
+      dessinPassiveStop();
+    } else if(msg.type==='hold_init'){
+      // Côté passif : le contrôleur a lancé le mode HOLD
+      holdPassiveStart();
+    } else if(msg.type==='hold_update'){
+      // Côté passif : nouvelle intensité du mode HOLD
+      holdApplyUpdate(msg);
+    } else if(msg.type==='hold_stop'){
+      // Côté passif : le contrôleur a arrêté le mode HOLD
+      holdActive=false;
+      document.getElementById('holdOverlay').classList.remove('active','is-ctrl');
+      document.getElementById('passiveSpeedHud').classList.remove('show');
+    } else if(msg.type==='ctrl_viewport'){
+      // Côté passif : mémoriser la taille d'écran du contrôleur pour le cadre FOV
+      ctrlViewport={w:msg.w,h:msg.h};
+      camUpdateFovOverlay();
     } else if(msg.type==='cam_visibility'){
       // Côté contrôleur : le passif cache/révèle son flux vidéo
       document.getElementById('ctrlHideOverlay').classList.toggle('show',msg.hidden);
     } else if(msg.type==='speed_update'){
-      // Côté passif : afficher la vitesse courante du Handy envoyée par le contrôleur
+      // Côté passif : afficher la vitesse/position courante du Handy envoyée par le contrôleur
       if(msg.mode==='gh'){
         ghSpeed=msg.speed; ghHampRunning=msg.running; ghUpdateHud();
+      } else if(msg.mode==='ap'){
+        document.getElementById('passiveSpeedHud').textContent=msg.running
+          ? 'Position: '+Math.round(msg.speed*100)+'%'
+          : 'Position: pause';
       } else {
         document.getElementById('passiveSpeedHud').textContent=msg.running
           ? 'Speed: '+Math.round(msg.speed*100)+'%'
@@ -603,6 +727,14 @@ function handlePeerData(data){
     }
   }catch(e){console.error('handlePeerData error:',e,data);}
 }
+
+// Recalcule/rediffuse les tailles d'écran selon le rôle quand la fenêtre change de taille
+window.addEventListener('resize',function(){
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'ctrl_viewport',w:window.innerWidth,h:window.innerHeight}));
+  }
+  if(camFovShown)camUpdateFovOverlay();
+});
 
 /* ── URL PARAMS ── */
 window.addEventListener('load',function(){

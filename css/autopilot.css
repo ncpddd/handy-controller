@@ -1,0 +1,75 @@
+/* ══════════════════════════════════════════
+   AUTO-PILOT MODE
+══════════════════════════════════════════ */
+
+/* Setup screen (contrôleur uniquement) */
+#apSetup{
+  position:fixed;inset:0;z-index:25;background:rgba(12,12,15,0.96);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:2rem;
+}
+#apSetup.active{display:flex;}
+#apSetup h2{font-size:22px;font-weight:800;text-align:center}
+#apSetup p{font-family:var(--fm);font-size:12px;color:var(--muted);text-align:center}
+#apPresetGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:360px}
+.ap-preset-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);
+  padding:12px;text-align:center;cursor:pointer;
+  transition:transform .1s,border-color .15s;-webkit-tap-highlight-color:transparent;
+}
+.ap-preset-card:active{transform:scale(.96)}
+.ap-preset-icon{font-size:22px;margin-bottom:6px}
+.ap-preset-wave{width:100%;height:30px;display:block;margin-bottom:6px}
+.ap-preset-wave polyline{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
+.ap-preset-label{font-family:var(--fm);font-size:11px;color:var(--muted)}
+#apSetupActions{display:flex;gap:8px}
+
+/* Overlay jeu (contrôleur + passif) — transparent, la caméra reste visible */
+#apOverlay{
+  position:fixed;inset:0;z-index:20;display:none;
+  pointer-events:all;background:transparent;
+}
+#apOverlay.active{display:block;}
+
+/* HUD (contrôleur uniquement) */
+#apHud{
+  position:absolute;top:0;left:0;right:0;z-index:22;
+  display:none;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.8),transparent);
+  pointer-events:none;
+}
+#apHud.show{display:flex}
+#apHud span{font-family:var(--fm);font-size:12px;color:var(--accent)}
+#apHud button{pointer-events:all}
+
+/* Courbe + curseur de lecture — bandeau bas translucide, la caméra reste visible derrière (ctrl + passif) */
+#apWaveWrap{
+  position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
+  width:78vw;max-width:380px;
+}
+#apWaveLabel{
+  font-family:var(--fm);font-size:13px;color:var(--accent);
+  text-align:center;margin-bottom:8px;
+  text-shadow:0 1px 4px rgba(0,0,0,0.8);
+}
+#apWaveSvg{
+  width:100%;height:70px;display:block;
+  background:rgba(15,15,20,0.5);border:1px solid var(--border);border-radius:var(--rs);
+  backdrop-filter:blur(2px);
+}
+#apWavePath{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
+
+/* Changement de preset en direct (contrôleur uniquement) */
+#apPresetSwitcher{
+  position:absolute;left:0;right:0;bottom:22px;
+  display:none;gap:8px;justify-content:center;flex-wrap:wrap;
+  pointer-events:all;
+}
+#apOverlay.is-ctrl #apPresetSwitcher{display:flex}
+.ap-switch-btn{
+  width:40px;height:40px;border-radius:50%;font-size:18px;
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.ap-switch-btn.active{border-color:var(--accent);box-shadow:0 0 10px rgba(200,255,0,0.4)}

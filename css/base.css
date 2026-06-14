@@ -68,6 +68,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   pointer-events:all;
 }
+#camFovBtn{
+  position:fixed;bottom:16px;right:72px;z-index:6;
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(12,12,15,0.7);border:1px solid rgba(255,255,255,0.12);
+  color:var(--text);font-size:20px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  pointer-events:all;
+}
+#camFovBtn.active{color:var(--accent);border-color:rgba(200,255,0,0.4)}
+
+/* Cadre pointillé représentant la zone visible sur l'écran du contrôleur */
+#camFovOverlay{
+  position:absolute;z-index:4;display:none;
+  border:2px dashed var(--accent);
+  box-shadow:0 0 0 2000px rgba(0,0,0,0.35);
+  pointer-events:none;
+}
 
 /* ── CONTROL MODE ── */
 #control-mode{display:none;position:fixed;inset:0;z-index:10;touch-action:none}

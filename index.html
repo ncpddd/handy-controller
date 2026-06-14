@@ -13,6 +13,10 @@
   <link rel="stylesheet" href="css/wheel.css"/>
   <link rel="stylesheet" href="css/shell.css"/>
   <link rel="stylesheet" href="css/pong.css"/>
+  <link rel="stylesheet" href="css/controldeck.css"/>
+  <link rel="stylesheet" href="css/autopilot.css"/>
+  <link rel="stylesheet" href="css/dessin.css"/>
+  <link rel="stylesheet" href="css/hold.css"/>
 </head>
 <body>
 
@@ -46,7 +50,10 @@
   </div>
   <!-- Cache le flux vidéo des deux côtés (surprise reveal) -->
   <div id="camHideOverlay" class="show"></div>
+  <!-- Cadre pointillé : ce que voit l'écran du contrôleur -->
+  <div id="camFovOverlay"></div>
   <button id="camVisibilityBtn" onclick="camToggleVideoVisibility()">🙈</button>
+  <button id="camFovBtn" onclick="camToggleFov()">⛶</button>
 </div>
 
 <!-- ── CONTROL MODE (input=control) ── -->
@@ -113,6 +120,26 @@
         <div class="mc-icon">🧱</div>
         <div class="mc-title">RALLY</div>
         <div class="mc-desc">1 vs the wall — controller tunes ball speed, count and paddle size live</div>
+      </div>
+      <div class="mode-card" onclick="startControlDeckMode()">
+        <div class="mc-icon">🎛️</div>
+        <div class="mc-title">CONTROL DECK</div>
+        <div class="mc-desc">Mixing-desk style — direct speed slider and stroke range control</div>
+      </div>
+      <div class="mode-card" onclick="startAutoPilotMode()">
+        <div class="mc-icon">🌊</div>
+        <div class="mc-title">AUTO-PILOT</div>
+        <div class="mc-desc">Pick a wave pattern and let it run on a loop</div>
+      </div>
+      <div class="mode-card" onclick="startDessinMode()">
+        <div class="mc-icon">✏️</div>
+        <div class="mc-title">DRAW</div>
+        <div class="mc-desc">Draw your own curve — it loops faithfully on the Handy</div>
+      </div>
+      <div class="mode-card" onclick="startHoldMode()">
+        <div class="mc-icon">⏱️</div>
+        <div class="mc-title">HOLD</div>
+        <div class="mc-desc">Press and hold to build up intensity — release to ease off</div>
       </div>
     </div>
   </div>
@@ -256,11 +283,127 @@
     <div id="rallyArea"></div>
   </div>
 
+  <!-- ── CONTROL DECK OVERLAY (body level, visible camera + control) ── -->
+  <div id="cdOverlay">
+    <div id="cdHud">
+      <span id="cdSpeedLabel">Speed: pause</span>
+      <div id="cdHudBtns">
+        <button id="cdToggleBtn" class="btn-game-stop" onclick="cdTogglePause()">▶ Start</button>
+        <button class="btn-game-stop" onclick="stopControlDeckMode()">✕ Quit</button>
+      </div>
+    </div>
+    <!-- Contrôleur uniquement -->
+    <div id="cdControls">
+      <div class="cd-section-label"><span>Speed</span><span id="cdSpeedValue">0%</span></div>
+      <div class="cd-slider-track">
+        <div class="cd-slider-fill" id="cdSpeedFill"></div>
+        <input type="range" id="cdSpeedSlider" min="0" max="100" value="0" oninput="cdOnSpeedInput(this.value)"/>
+      </div>
+    </div>
+    <!-- Contrôleur uniquement, plage verticale à droite -->
+    <div id="cdRangePanel">
+      <span id="cdRangeMaxLabel">Max 100%</span>
+      <div class="range-slider-v">
+        <div class="range-track-v"></div>
+        <div class="range-fill-v" id="cdRangeFill"></div>
+        <input type="range" id="cdRangeMaxSlider" min="0" max="100" value="100" oninput="cdOnRangeInput('max')"/>
+        <input type="range" id="cdRangeMinSlider" min="0" max="100" value="0" oninput="cdOnRangeInput('min')"/>
+      </div>
+      <span id="cdRangeMinLabel">Min 0%</span>
+    </div>
+    <!-- Passif uniquement -->
+    <div id="cdGaugeWrap">
+      <div id="cdGauge">
+        <div id="cdGaugeZone"></div>
+        <div id="cdGaugeMarker"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AUTO-PILOT SETUP (contrôleur uniquement, body level) ── -->
+  <div id="apSetup">
+    <h2>🌊 Auto-Pilot</h2>
+    <p>Choose a movement pattern to run on a loop</p>
+    <div id="apPresetGrid"></div>
+    <div id="apSetupActions">
+      <button class="btn btn-g" onclick="apCancelSetup()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── AUTO-PILOT OVERLAY (body level, visible camera + control) ── -->
+  <div id="apOverlay">
+    <div id="apHud">
+      <span id="apSpeedLabel">Position: pause</span>
+      <button class="btn-game-stop" onclick="stopAutoPilotMode()">■ Stop</button>
+    </div>
+    <div id="apWaveWrap">
+      <div id="apWaveLabel"></div>
+      <svg id="apWaveSvg" viewBox="0 0 100 30" preserveAspectRatio="none">
+        <polyline id="apWavePath" points=""/>
+      </svg>
+    </div>
+    <!-- Contrôleur uniquement -->
+    <div id="apPresetSwitcher"></div>
+  </div>
+
+  <!-- ── DESSIN SETUP (contrôleur uniquement, body level) ── -->
+  <div id="dessinSetup">
+    <h2>✏️ Draw</h2>
+    <p>Hold and move up/down — your motion is recorded and loops for as long as you record</p>
+    <div id="dessinCanvasWrap">
+      <canvas id="dessinCanvas"></canvas>
+      <span class="dessin-axis-label top">high</span>
+      <span class="dessin-axis-label bottom">low</span>
+    </div>
+    <div id="dessinRecStatus">Hold and move up/down to record</div>
+    <div id="dessinSetupActions">
+      <button class="btn btn-g" onclick="dessinCancelSetup()">Cancel</button>
+      <button class="btn btn-g" onclick="dessinClear()">Clear</button>
+      <button class="btn btn-a" id="dessinLaunchBtn" onclick="dessinLaunch()" disabled>▶ Play</button>
+    </div>
+  </div>
+
+  <!-- ── DESSIN OVERLAY (body level, visible camera + control) ── -->
+  <div id="dessinOverlay">
+    <div id="dessinHud">
+      <span id="dessinSpeedLabel">Position: pause</span>
+      <button class="btn-game-stop" onclick="stopDessinMode()">■ Stop</button>
+    </div>
+    <div id="dessinWaveWrap">
+      <div id="dessinWaveLabel"></div>
+      <div id="dessinWaveBox">
+        <svg id="dessinWaveSvg" viewBox="0 0 100 30" preserveAspectRatio="none">
+          <polyline id="dessinWavePath" points=""/>
+        </svg>
+        <div id="dessinDot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HOLD OVERLAY (body level, visible camera + control) ── -->
+  <div id="holdOverlay">
+    <div id="holdHud">
+      <span id="holdSpeedLabel">Speed: pause</span>
+      <button class="btn-game-stop" onclick="stopHoldMode()">■ Stop</button>
+    </div>
+    <div id="holdStage">
+      <div id="holdOrb">
+        <div id="holdFill"></div>
+        <div id="holdOrbLabel">0%</div>
+      </div>
+      <div id="holdHint">Press and hold to build up</div>
+    </div>
+  </div>
+
 <script src="js/core.js"></script>
 <script src="js/target.js"></script>
 <script src="js/guitar.js"></script>
 <script src="js/wheel.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/pong.js"></script>
+<script src="js/controldeck.js"></script>
+<script src="js/autopilot.js"></script>
+<script src="js/dessin.js"></script>
+<script src="js/hold.js"></script>
 </body>
 </html>
