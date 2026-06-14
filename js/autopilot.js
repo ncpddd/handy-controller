@@ -173,7 +173,8 @@ function apBuildCsv(preset){
   for(var i=0;i<=steps;i++){
     var p=i/steps;
     var t=Math.round(p*preset.periodMs);
-    var pos=Math.round(cl(preset.curve(p),0,1)*100);
+    // plafond de hauteur passif : on met à l'échelle la position
+    var pos=Math.round(cl(preset.curve(p),0,1)*100*passiveMaxH);
     lines.push(t+','+pos);
   }
   return lines.join('\n');
@@ -181,14 +182,28 @@ function apBuildCsv(preset){
 
 /* Héberge le script du preset (mis en cache sur le preset) */
 async function apUploadScript(preset){
-  if(preset.scriptUrl)return preset.scriptUrl;
+  // cache invalidé si le plafond de hauteur a changé (le script dépend de passiveMaxH)
+  if(preset.scriptUrl&&preset.scriptMaxH===passiveMaxH)return preset.scriptUrl;
   var csv=apBuildCsv(preset);
   var fd=new FormData();
   fd.append('file',new Blob([csv],{type:'text/csv'}),'preset.csv');
   var r=await fetch('https://www.handyfeeling.com/api/hosting/v2/upload',{method:'POST',body:fd});
   var d=await r.json();
   preset.scriptUrl=d.url;
+  preset.scriptMaxH=passiveMaxH;
   return d.url;
+}
+
+/* Le plafond de hauteur a changé : reconstruire et rejouer le script du preset actif. */
+async function apReapplyMaxHeight(){
+  var preset=AUTOPILOT_PRESETS.find(function(p){return p.id===apPresetId;});
+  if(!preset)return;
+  await apStopPlayback();
+  var playTime=await apStartPlayback(preset);
+  apApplyPreset(apPresetId,playTime||Date.now());
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'ap_init',presetId:apPresetId,startTime:apStartTime}));
+  }
 }
 
 /* Charge et joue le script HSSP du preset (en boucle).

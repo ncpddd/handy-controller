@@ -226,7 +226,8 @@ function dessinBuildCsv(){
   for(var i=0;i<=steps;i++){
     var p=i/steps;
     var t=Math.round(p*dessinPeriodMs);
-    var pos=Math.round(cl(dessinSampleCurve(p),0,100));
+    // plafond de hauteur passif : on met à l'échelle la position
+    var pos=Math.round(cl(dessinSampleCurve(p),0,100)*passiveMaxH);
     lines.push(t+','+pos);
   }
   return lines.join('\n');
@@ -263,6 +264,18 @@ async function dessinStopPlayback(){
   try{await fetch(V3+'/hssp/stop',{method:'PUT',headers:dessinHdrs(false)});}
   catch(e){console.error('DRAW HSSP stop error:',e);}
   dessinPlaying=false;
+}
+
+/* Le plafond de hauteur a changé : reconstruire et rejouer la courbe (mise à l'échelle). */
+async function dessinReapplyMaxHeight(){
+  if(!dessinCurve)return;
+  await dessinStopPlayback();
+  var playTime=await dessinStartPlayback();
+  dessinStartTime=playTime||Date.now();
+  dessinApplyCurve(dessinCurve,dessinStartTime,dessinPeriodMs);
+  if(gameDataConn&&gameDataConn.open){
+    gameDataConn.send(JSON.stringify({type:'dessin_init',points:dessinCurve,startTime:dessinStartTime,periodMs:dessinPeriodMs}));
+  }
 }
 
 /* ── Launch (controller) ── */

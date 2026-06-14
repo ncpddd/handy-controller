@@ -23,6 +23,13 @@ var basicActive=false; // true uniquement quand le mode BASIC est sélectionné 
 var gameDataConn=null;      // connexion PeerJS données vers le passif
 var passiveMode=false;      // true = on est le passif (mode TARGET)
 
+/* Plafond de hauteur/course réglé côté passif (0..1). Toutes les positions et les max de
+   plage de course envoyés au Handy sont multipliés par ce facteur (ex : 80% de course
+   demandé × plafond 80% = 64% réel). Côté contrôleur, fixé via le message 'max_height'. */
+var passiveMaxH=1;
+var camMaxHeightPct=100;    // côté passif : valeur courante du slider (pour la renvoyer à la connexion)
+var maxHReapplyTimer=null;  // côté contrôleur : debounce du ré-upload HSSP quand le plafond change
+
 /* ── API ── */
 async function getToken(){
   var r=await fetch(V3+'/auth/token/issue?ttl=86400',{headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+ak}});
@@ -54,8 +61,8 @@ async function call(path,method,body){
 
 async function stopHandy(){
   try{
-    if(useV3)await call('/hdsp/xpt','PUT',{xp:curPos});
-    else await fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:curPos/100})});
+    if(useV3)await call('/hdsp/xpt','PUT',{xp:Math.round(curPos*passiveMaxH)});
+    else await fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(curPos/100)*passiveMaxH})});
   }catch(e){}
   var ms=document.getElementById('ms');if(ms)ms.textContent='idle';
 }
@@ -119,7 +126,7 @@ async function playSegment(samples){
   try{
     var r=await fetch(V2+'/hdsp/xpt',{method:'PUT',
       headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
-      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:duration,position:target/100})});
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:duration,position:(target/100)*passiveMaxH})});
     if(r.ok)rttEstimate=Math.round(rttEstimate*0.7+(performance.now()-sentAt)*0.3);
   }catch(e){console.warn('xpt error:',e);}
   finally{xptBusy=false;}
@@ -193,6 +200,8 @@ async function initCameraMode(){
       console.log('Passive: data channel open');
       // Synchroniser l'état caché/révélé de la caméra avec le contrôleur qui vient de se connecter
       conn.send(JSON.stringify({type:'cam_visibility',hidden:camVideoHidden}));
+      // Envoyer le plafond de hauteur courant (au cas où il a été réglé avant la connexion)
+      conn.send(JSON.stringify({type:'max_height',value:camMaxHeightPct}));
     });
     conn.on('data',function(data){
       console.log('Passive received data:',data);
@@ -217,6 +226,15 @@ function camToggleVideoVisibility(){
   document.getElementById('camVisibilityBtn').textContent=camVideoHidden?'🙈':'👁️';
   if(camConn&&camConn.open){
     camConn.send(JSON.stringify({type:'cam_visibility',hidden:camVideoHidden}));
+  }
+}
+
+/* ── Plafond de hauteur/course (passif) ── */
+function camOnMaxHeightInput(val){
+  camMaxHeightPct=cl(parseInt(val,10),0,100);
+  document.getElementById('camMaxHeightVal').textContent=camMaxHeightPct+'%';
+  if(camConn&&camConn.open){
+    camConn.send(JSON.stringify({type:'max_height',value:camMaxHeightPct}));
   }
 }
 
@@ -488,7 +506,7 @@ function ctrlOnEnd(){
   // Commande finale sans anticipation : se poser exactement à la position relâchée
   if(ck){
     fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
-      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:curPos/100})}).catch(function(){});
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(curPos/100)*passiveMaxH})}).catch(function(){});
   }
 }
 
@@ -704,6 +722,10 @@ function handlePeerData(data){
       holdActive=false;
       document.getElementById('holdOverlay').classList.remove('active','is-ctrl');
       document.getElementById('passiveSpeedHud').classList.remove('show');
+    } else if(msg.type==='max_height'){
+      // Côté contrôleur : le passif règle le plafond de hauteur/course
+      passiveMaxH=cl((msg.value!=null?msg.value:100)/100,0,1);
+      reapplyMaxHeight();
     } else if(msg.type==='ctrl_viewport'){
       // Côté passif : mémoriser la taille d'écran du contrôleur pour le cadre FOV
       ctrlViewport={w:msg.w,h:msg.h};
@@ -726,6 +748,46 @@ function handlePeerData(data){
       }
     }
   }catch(e){console.error('handlePeerData error:',e,data);}
+}
+
+/* Ré-applique le plafond de hauteur au mode actif quand le passif le change (contrôleur).
+   BASIC : la prochaine commande applique déjà le facteur (on pose une commande immédiate si
+   le doigt n'est pas en train de dessiner). CONTROL DECK : on renvoie sa plage de course
+   (re-scalée). WHEEL : appliqué automatiquement au prochain wheelSetRange. AUTO-PILOT / DRAW :
+   le script HSSP doit être reconstruit/rejoué (coûteux → débounce). */
+// Course physique du Handy plafonnée à [0, passiveMaxH] (V3). Utilisé par les modes qui ne
+// pilotent que la vitesse (HOLD, TARGET, GUITAR, SHELL, RALLY) et comme course de repos WHEEL,
+// pour qu'ils respectent aussi le plafond de hauteur réglé côté passif.
+function applyStrokeCap(){
+  if(!ck||!token)return;
+  fetch(V3+'/hamp/stroke',{method:'PUT',
+    headers:{'X-Connection-Key':ck,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({min:0,max:passiveMaxH})}).catch(function(){});
+}
+
+function reapplyMaxHeight(){
+  if(basicActive&&ck&&!drawing){
+    fetch(V2+'/hdsp/xpt',{method:'PUT',headers:{'X-Connection-Key':ck,'Content-Type':'application/json'},
+      body:JSON.stringify({stopOnTarget:true,immediateResponse:true,duration:MIN_DUR_MS,position:(curPos/100)*passiveMaxH})}).catch(function(){});
+  }
+  // modes à plage propre (déjà mise à l'échelle dans leur setRange)
+  if(typeof cdActive!=='undefined'&&cdActive&&cdIsCtrl&&cdHampRunning)cdSetRange(cdRangeMin,cdRangeMax);
+  // modes vitesse + WHEEL : on plafonne la course physique [0, plafond]
+  if((typeof holdHampRunning!=='undefined'&&holdHampRunning)||
+     (typeof gameHampRunning!=='undefined'&&gameHampRunning)||
+     (typeof ghHampRunning!=='undefined'&&ghHampRunning)||
+     (typeof shellHampRunning!=='undefined'&&shellHampRunning)||
+     (typeof rallyHampRunning!=='undefined'&&rallyHampRunning)||
+     (typeof wheelHampRunning!=='undefined'&&wheelHampRunning)){
+    applyStrokeCap();
+  }
+
+  if(maxHReapplyTimer)clearTimeout(maxHReapplyTimer);
+  maxHReapplyTimer=setTimeout(function(){
+    maxHReapplyTimer=null;
+    if(typeof apActive!=='undefined'&&apActive&&apIsCtrl&&apPlaying&&typeof apReapplyMaxHeight==='function')apReapplyMaxHeight();
+    if(typeof dessinActive!=='undefined'&&dessinActive&&dessinIsCtrl&&dessinPlaying&&typeof dessinReapplyMaxHeight==='function')dessinReapplyMaxHeight();
+  },350);
 }
 
 // Recalcule/rediffuse les tailles d'écran selon le rôle quand la fenêtre change de taille

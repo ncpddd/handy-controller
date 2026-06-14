@@ -151,6 +151,7 @@ async function holdEnsureHamp(){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:holdHdrs(false)});
     await holdSleep(250);
     holdHampRunning=true;
+    applyStrokeCap();
     holdLastVel=holdSpeed;
     await holdSetVelocity(holdSpeed);
     holdRender();

@@ -250,6 +250,7 @@ async function wheelEnsureHamp(v){
     await fetch(V3+'/hamp/start',{method:'PUT',headers:wheelHdrs(false)});
     await wheelSleep(250);
     wheelHampRunning=true;
+    applyStrokeCap();
     wheelUpdateHud();
     await wheelSetVelocity(v);
   }catch(e){console.error('Wheel HAMP launch error:',e);}
@@ -383,7 +384,8 @@ function wheelChaos(durationMs){
 
 // Restreint l'amplitude de course du Handy à [min,max] (%) pendant durationMs, vitesse inchangée
 function wheelSetRange(min,max){
-  fetch(V3+'/hamp/stroke',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({min:min/100,max:max/100})}).catch(function(){});
+  // plafond de hauteur passif : on met à l'échelle la plage de course
+  fetch(V3+'/hamp/stroke',{method:'PUT',headers:wheelHdrs(true),body:JSON.stringify({min:(min/100)*passiveMaxH,max:(max/100)*passiveMaxH})}).catch(function(){});
 }
 function wheelTempRange(min,max,durationMs){
   wheelSetRange(min,max);

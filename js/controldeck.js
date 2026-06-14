@@ -172,7 +172,8 @@ async function cdSetVelocity(v){
   catch(e){console.error('CD velocity error:',e);}
 }
 function cdSetRange(min,max){
-  fetch(V3+'/hamp/stroke',{method:'PUT',headers:cdHdrs(true),body:JSON.stringify({min:min/100,max:max/100})}).catch(function(){});
+  // plafond de hauteur passif : on met à l'échelle la plage de course
+  fetch(V3+'/hamp/stroke',{method:'PUT',headers:cdHdrs(true),body:JSON.stringify({min:(min/100)*passiveMaxH,max:(max/100)*passiveMaxH})}).catch(function(){});
 }
 
 /* ── Start/Stop manuel (contrôleur) ── */

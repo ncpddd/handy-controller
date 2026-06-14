@@ -87,6 +87,25 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   pointer-events:none;
 }
 
+/* Plafond de hauteur/course (passif) : slider vertical en bas à gauche */
+#camMaxHeight{
+  position:fixed;left:16px;bottom:16px;z-index:6;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:12px 8px;border-radius:24px;
+  background:rgba(12,12,15,0.7);border:1px solid rgba(255,255,255,0.12);
+  pointer-events:all;
+}
+#camMaxHeightVal{font-family:var(--fm);font-size:12px;color:var(--accent)}
+#camMaxHeightSlider{
+  -webkit-appearance:slider-vertical;appearance:slider-vertical;
+  writing-mode:vertical-lr;direction:rtl;
+  width:8px;height:150px;accent-color:var(--accent);cursor:pointer;
+}
+#camMaxHeight .cam-max-lbl{
+  font-family:var(--fm);font-size:9px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;writing-mode:horizontal-tb;
+}
+
 /* ── CONTROL MODE ── */
 #control-mode{display:none;position:fixed;inset:0;z-index:10;touch-action:none}
 #control-mode.active{display:block}

@@ -54,6 +54,12 @@
   <div id="camFovOverlay"></div>
   <button id="camVisibilityBtn" onclick="camToggleVideoVisibility()">🙈</button>
   <button id="camFovBtn" onclick="camToggleFov()">⛶</button>
+  <!-- Plafond de hauteur/course du Handy (réglé côté passif, s'applique à tous les modes) -->
+  <div id="camMaxHeight">
+    <span id="camMaxHeightVal">100%</span>
+    <input type="range" id="camMaxHeightSlider" min="0" max="100" value="100" oninput="camOnMaxHeightInput(this.value)"/>
+    <span class="cam-max-lbl">Max height</span>
+  </div>
 </div>
 
 <!-- ── CONTROL MODE (input=control) ── -->
